@@ -1,4 +1,5 @@
 import pandas as pd 
+import re
 
 def get_data():
     df = pd.read_table('insurance_data/ticdata2000.txt')
@@ -21,6 +22,28 @@ def get_data():
 
     df.columns = col_names
 
+
+    with open("insurance_data/dictionary.txt", "r") as f:
+        text = f.read()
+
+    var_discrete = {}
+    col_descriptions = {}
+    lines = text.splitlines()[3:89]
+    for line in lines:
+        words = line.split()
+        var_name = words[1]
+        description = " ".join(words[2:])
+        if re.search(r'see L[0-4]', description): #alors var discrète
+            var_discrete[var_name] = True
+        else:
+            var_discrete[var_name] = False
+        col_descriptions[var_name] = description
+    df.attrs['description'] = col_descriptions
+    df.attrs['var_type'] = var_discrete
+
+    age_map = {1: 25, 2: 35, 3: 45, 4: 55, 5: 65, 6: 75}
+    df['MGEMLEEF'] = df['MGEMLEEF'].map(age_map)
+
     return df
 
 def get_split_data(df):
@@ -28,20 +51,6 @@ def get_split_data(df):
     y = df['CARAVAN']
 
     return X, y
-
-def get_df_with_description(df):
-    with open("insurance_data/dictionary.txt", "r") as f:
-        text = f.read()
-    col_descriptions = {}
-    lines = text.splitlines()[3:89]
-    for line in lines:
-        words = line.split()
-        var_name = words[1]
-        description = " ".join(words[2:])
-        #df.rename(columns={var_name: description}, inplace=True)
-        col_descriptions[var_name] = description
-    df.attrs['description'] = col_descriptions
-    return df
 
 def describe(col, df):
     return df.attrs['description'].get(col)
@@ -52,3 +61,12 @@ def top_index_and_values(top_n, df):
     top_values = top_var.values
     for (a, b), val in zip(top_index, top_values):
         print(f'{describe(a, df):<{50}} {a:<10} - {val:>5.4f}' )
+
+def get_var_by_types(df):
+    var_type = df.attrs['var_type']
+    discrete_vars = [col for col, is_discrete in var_type.items() if is_discrete]
+    continuous_vars = [col for col, is_discrete in var_type.items() if not is_discrete]
+    return discrete_vars, continuous_vars
+
+df = get_data()
+print(df['MOSTYPE'].value_counts())
