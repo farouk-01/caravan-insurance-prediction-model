@@ -59,11 +59,11 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000):
             print(f"Iteration {i}: Cost = {cost}")
     return w, b
 
-def predict(X, w, b):
+def predict(X, w, b, t):
     z = np.dot(X, w) + b
     p = sigmoid(z)
     #print(np.min(p), np.max(p), np.mean(p))
-    return (p >= 0.05).astype(int)
+    return (p >= t).astype(int)
 
 
 

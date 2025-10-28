@@ -1,4 +1,5 @@
 import pandas as pd 
+import numpy as np
 import re
 
 def get_data():
@@ -33,7 +34,7 @@ def get_data():
         words = line.split()
         var_name = words[1]
         description = " ".join(words[2:])
-        if re.search(r'see L[0-4]', description): #alors var discrète
+        if var_name.startswith('M') or var_name.startswith('A') or re.search(r'see L[0-4]', description): #alors var discrète
             var_discrete[var_name] = True
         else:
             var_discrete[var_name] = False
@@ -64,9 +65,19 @@ def top_index_and_values(top_n, df):
 
 def get_var_by_types(df):
     var_type = df.attrs['var_type']
-    discrete_vars = [col for col, is_discrete in var_type.items() if is_discrete]
+    discrete_vars = [col for col, is_discrete in var_type.items() if is_discrete and col]
     continuous_vars = [col for col, is_discrete in var_type.items() if not is_discrete]
     return discrete_vars, continuous_vars
 
-df = get_data()
-print(df['MOSTYPE'].value_counts())
+def save_model_state(w,b,threshold,accuracy,conf_matrix, version):
+    model_state = {
+        'w': w,
+        'b': b,
+        'threshold': threshold,
+        'accuracy': accuracy, 
+        'conf_matrix': conf_matrix
+    }
+    np.save(f"model_version/model_state_dict_{version}.npy", model_state)
+
+# df = get_data()
+# print(df['MOSTYPE'].value_counts())
