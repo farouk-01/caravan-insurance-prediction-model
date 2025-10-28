@@ -31,11 +31,11 @@ y_small = df['CARAVAN']  #targets
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
+#aka loss function
 def cost_function(X, y, w, b):
-    m = X.shape[0] #m rows si 1 alors m cols
     z = np.dot(X, w) + b #prediction, comme a * e + b
-    p = sigmoid(z)
-    cost = -np.mean(y * np.log(p) + (1-y) * np.log(1-p))
+    p = sigmoid(z) #or y hat
+    cost = -np.mean(y * np.log(p) + (1-y) * np.log(1-p)) #pas obliger de diviser par m vu que : mean
     return cost
 
 def compute_gradients(X, y, w,b):
