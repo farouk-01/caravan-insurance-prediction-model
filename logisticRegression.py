@@ -62,7 +62,8 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000):
 def predict(X, w, b):
     z = np.dot(X, w) + b
     p = sigmoid(z)
-    return (p >= 0.5).astype(int)
+    #print(np.min(p), np.max(p), np.mean(p))
+    return (p >= 0.05).astype(int)
 
 
 
