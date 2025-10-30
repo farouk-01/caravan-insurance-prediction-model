@@ -34,7 +34,7 @@ def get_data():
         words = line.split()
         var_name = words[1]
         description = " ".join(words[2:])
-        if var_name.startswith('M') or var_name.startswith('A') or re.search(r'see L[0-4]', description): #alors var discrète
+        if var_name.startswith('M') or var_name.startswith('A') or var_name.startswith('P') or re.search(r'see L[0-4]', description): #alors var discrète
             var_discrete[var_name] = True
         else:
             var_discrete[var_name] = False
