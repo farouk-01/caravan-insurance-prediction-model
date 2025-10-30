@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 
@@ -28,6 +28,8 @@ df.columns = col_names
 X_small = df.drop('CARAVAN', axis=1) 
 y_small = df['CARAVAN']  #targets
 
+y_test_data = np.array(df['CARAVAN'].values)
+
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
@@ -38,21 +40,24 @@ def cost_function(X, y, w, b):
     cost = -np.mean(y * np.log(p) + (1-y) * np.log(1-p)) #pas obliger de diviser par m vu que : mean
     return cost
 
-def compute_gradients(X, y, w,b):
+def compute_gradients(X, y, w, b, extra_weight=1):
     m = X.shape[0]
     z = np.dot(X, w) + b
     p = sigmoid(z) #or y hat
-    dw = np.dot(X.T, (p-y)) / m #transpose pour avoir (n x m) * (m x 1) = n x 1
-    db = np.sum(p-y) / m 
+
+    weights = np.where(y==1, extra_weight, 1) #Ajoute extra_weight si target sinon ajoute rien (x1)
+
+    dw = np.dot(X.T, weights * (p-y)) / np.sum(weights) #transpose pour avoir (n x m) * (m x 1) = n x 1
+    db = np.sum(weights * (p-y)) / np.sum(weights) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X, y, learning_rate=0.01, iterations=1000):
+def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1):
     m, n = X.shape
     w = np.zeros(n) #array of n zeros, on init les weights
     b = 0 #learned bias
     for i in range(iterations):
         cost = cost_function(X, y, w, b)
-        dw, db = compute_gradients(X, y, w, b)
+        dw, db = compute_gradients(X, y, w, b, extra_weight)
         w -= learning_rate*dw
         b -= learning_rate*db
         if i % 100 == 0:
@@ -66,10 +71,17 @@ def predict(X, w, b, t):
     return (p >= t).astype(int)
 
 
+def print_model_stats(X, w, b, threshold):
+    y_prediction = predict(X, w, b, threshold)
+    accuracy = np.mean(y_prediction == y_test_data)
+    conf_matrix = confusion_matrix(y_test_data, y_prediction)
+    print(accuracy)
+    print(conf_matrix)
+
 
 # Labels (0 or 1)
-y_test_data = np.array(df['CARAVAN'].values)
-unique, counts = np.unique(y_test_data, return_counts=True)
+# y_test_data = np.array(df['CARAVAN'].values)
+# unique, counts = np.unique(y_test_data, return_counts=True)
 
 #w, b = logistic_regression(X_small, y_small, learning_rate=0.01, iterations=1000)
 # print("Learned weights:", w)

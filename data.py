@@ -38,7 +38,8 @@ def get_data():
         if var_name.startswith('M') or var_name.startswith('A') or var_name.startswith('P') or re.search(r'see L[0-4]', description): #alors var discrète
             var_discrete[var_name] = True
         else:
-            var_discrete[var_name] = False
+            print(var_name)
+            var_discrete[var_name] = True
         col_descriptions[var_name] = description
     df.attrs['description'] = col_descriptions
     df.attrs['var_type'] = var_discrete
@@ -104,3 +105,5 @@ def edit_model_state(model_version, changes, why):
     state['changes'] = changes
     state['why'] = why
     np.save(f'model_version/model_state_dict_{model_version}.npy', state)
+
+    
