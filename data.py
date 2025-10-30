@@ -1,6 +1,7 @@
 import pandas as pd 
 import numpy as np
 import re
+import glob 
 
 def get_data():
     df = pd.read_table('insurance_data/ticdata2000.txt')
@@ -69,15 +70,37 @@ def get_var_by_types(df):
     continuous_vars = [col for col, is_discrete in var_type.items() if not is_discrete]
     return discrete_vars, continuous_vars
 
-def save_model_state(w,b,threshold,accuracy,conf_matrix, version):
+def save_model_state(w,b,threshold,accuracy,conf_matrix, version, changes, why):
     model_state = {
         'w': w,
         'b': b,
         'threshold': threshold,
         'accuracy': accuracy, 
-        'conf_matrix': conf_matrix
+        'conf_matrix': conf_matrix,
+        'version': version,
+        'changes': changes,
+        'why': why
     }
     np.save(f"model_version/model_state_dict_{version}.npy", model_state)
 
-# df = get_data()
-# print(df['MOSTYPE'].value_counts())
+def import_models():
+    models = {}
+    for path in glob.glob('model_version/model_state_dict_*.npy'):
+        models[path] = np.load(path, allow_pickle=True).item()
+    return models
+
+def compare_models():
+    models = import_models()
+    for name, m in models.items():
+        print(f'version: {m['version']}')
+        print(f'{m['changes']} car {m['why']}')
+        print(m['accuracy'])
+        print(m['conf_matrix'])
+        print()
+
+def edit_model_state(model_version, changes, why):
+    state = np.load(f'model_version/model_state_dict_{model_version}.npy', allow_pickle=True).item()
+    state['version'] = model_version
+    state['changes'] = changes
+    state['why'] = why
+    np.save(f'model_version/model_state_dict_{model_version}.npy', state)
