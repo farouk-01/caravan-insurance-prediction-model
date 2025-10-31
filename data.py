@@ -3,6 +3,27 @@ import numpy as np
 import re
 import glob 
 
+def read_dictionnary(df):
+    with open("insurance_data/dictionary.txt", "r") as f:
+        text = f.read()
+
+    var_ordinale = {}
+    col_descriptions = {}
+    lines = text.splitlines()[3:89]
+    for line in lines:
+        words = line.split()
+        var_name = words[1]
+        description = " ".join(words[2:])
+        if  re.search(r'see L[134]', description): #ils sont ordinales
+            var_ordinale[var_name] = True
+        else:
+            var_ordinale[var_name] = False
+        col_descriptions[var_name] = description
+    df.attrs['description'] = col_descriptions
+    df.attrs['ordinale'] = var_ordinale
+
+    return df
+
 def get_data():
     df = pd.read_table('insurance_data/ticdata2000.txt')
 
@@ -25,25 +46,38 @@ def get_data():
     df.columns = col_names
 
 
-    with open("insurance_data/dictionary.txt", "r") as f:
-        text = f.read()
-
-    var_ordinale = {}
-    col_descriptions = {}
-    lines = text.splitlines()[3:89]
-    for line in lines:
-        words = line.split()
-        var_name = words[1]
-        description = " ".join(words[2:])
-        if  re.search(r'see L[134]', description): #ils sont ordinales
-            var_ordinale[var_name] = True
-        else:
-            var_ordinale[var_name] = False
-        col_descriptions[var_name] = description
-    df.attrs['description'] = col_descriptions
-    df.attrs['ordinale'] = var_ordinale
-
+    df = read_dictionnary(df)
     return df
+
+def get_test_data():
+    df = pd.read_table('insurance_data/ticeval2000.txt')
+
+    col_names = [
+        "MOSTYPE","MAANTHUI","MGEMOMV","MGEMLEEF","MOSHOOFD","MGODRK","MGODPR",
+        "MGODOV","MGODGE","MRELGE","MRELSA","MRELOV","MFALLEEN","MFGEKIND",
+        "MFWEKIND","MOPLHOOG","MOPLMIDD","MOPLLAAG","MBERHOOG","MBERZELF",
+        "MBERBOER","MBERMIDD","MBERARBG","MBERARBO","MSKA","MSKB1","MSKB2",
+        "MSKC","MSKD","MHHUUR","MHKOOP","MAUT1","MAUT2","MAUT0","MZFONDS",
+        "MZPART","MINKM30","MINK3045","MINK4575","MINK7512","MINK123M",
+        "MINKGEM","MKOOPKLA","PWAPART","PWABEDR","PWALAND","PPERSAUT","PBESAUT",
+        "PMOTSCO","PVRAAUT","PAANHANG","PTRACTOR","PWERKT","PBROM","PLEVEN",
+        "PPERSONG","PGEZONG","PWAOREG","PBRAND","PZEILPL","PPLEZIER","PFIETS",
+        "PINBOED","PBYSTAND","AWAPART","AWABEDR","AWALAND","APERSAUT","ABESAUT",
+        "AMOTSCO","AVRAAUT","AAANHANG","ATRACTOR","AWERKT","ABROM","ALEVEN",
+        "APERSONG","AGEZONG","AWAOREG","ABRAND","AZEILPL","APLEZIER","AFIETS",
+        "AINBOED","ABYSTAND"
+    ]
+
+    df.columns = col_names
+
+    df = read_dictionnary(df)
+    return df
+
+def get_test_targets():
+    df = pd.read_table('insurance_data/tictgts2000.txt')
+    df.columns = ['CARAVAN']
+    return df
+
 
 def get_split_data(df):
     X = df.drop('CARAVAN', axis=1)
