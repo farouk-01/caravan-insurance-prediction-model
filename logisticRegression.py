@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, roc_curve
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, roc_curve, roc_auc_score
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
+from itertools import combinations
 
 df = pd.read_table('insurance_data/ticdata2000.txt')
 
@@ -25,10 +26,9 @@ col_names = [
 
 df.columns = col_names
 
-X_small = df.drop('CARAVAN', axis=1) 
-y_small = df['CARAVAN']  #targets
-
-y_test_data = np.array(df['CARAVAN'].values)
+# X_small = df.drop('CARAVAN', axis=1) 
+# y_target = df['CARAVAN']  #targets
+# y_target_data = y_target.to_numpy()
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
@@ -51,7 +51,7 @@ def compute_gradients(X, y, w, b, extra_weight=1):
     db = np.sum(weights * (p-y)) / np.sum(weights) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1):
+def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1, to_print=True):
     m, n = X.shape
     w = np.zeros(n) #array of n zeros, on init les weights
     b = 0 #learned bias
@@ -60,7 +60,7 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
         dw, db = compute_gradients(X, y, w, b, extra_weight)
         w -= learning_rate*dw
         b -= learning_rate*db
-        if i % 100 == 0:
+        if to_print and i % 100 == 0:
             print(f"Iteration {i}: Cost = {cost}")
     return w, b
 
@@ -79,12 +79,45 @@ def youden_index_threshold(y_true, y_proba):
     best_index = np.argmax(J)
     return thresholds[best_index], J[best_index]
 
-def print_model_stats(X, w, b, threshold):
-    y_prediction = predict(X, w, b, threshold)
-    accuracy = np.mean(y_prediction == y_test_data)
-    conf_matrix = confusion_matrix(y_test_data, y_prediction)
-    print(accuracy)
+def print_model_stats(X, y, w, b, threshold):
+    y_prediction = predict(X, w, b, threshold) #Rappel : thresholded -> accuracy et conf matrix
+    y_probas = predict_probas(X, w, b)
+    accuracy = np.mean(y_prediction == y)
+    conf_matrix = confusion_matrix(y, y_prediction)
+    auc = roc_auc_score(y, y_probas)
+    print('Accuracy: ', accuracy)
     print(conf_matrix)
+    print('AUC: ', auc)
+
+def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rate, ratio):
+    y_pred_base = predict_probas(X_old, w_old, b_old)
+    auc_base = roc_auc_score(y, y_pred_base)
+
+    for comb in combinations(vars_to_test, 2):
+        X_interaction = X_old.copy()
+        inter_name = f"{comb[0]}_x_{comb[1]}"
+        X_interaction[inter_name] = X_interaction[comb[0]] * X_interaction[comb[1]]
+        w,b = logistic_regression(X_interaction.to_numpy(), y, learning_rate=learning_rate, extra_weight=ratio, to_print=False)
+        y_pred_new = predict_probas(X_interaction, w, b)
+        new_auc = roc_auc_score(y, y_pred_new)
+        print(f"Interaction {inter_name} : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
+
+def add_interactions_terms(X, interactions):
+    X_new = X.copy()
+    for var1, var2 in interactions:
+        inter_name = f"{var1}_x_{var2}"
+        X_new[inter_name] = X_new[var1] * X_new[var2]
+    return X_new
+
+def compare_auc_score(X_old, y, w_old, b_old, X_new, learning_rate, ratio):
+    y_pred_base = predict_probas(X_old, w_old, b_old)
+    auc_base = roc_auc_score(y, y_pred_base)
+
+    w, b = logistic_regression(X_new, y, learning_rate=learning_rate, extra_weight=ratio, to_print=False)
+    y_pred_new = predict_probas(X_new, w, b)
+    new_auc = roc_auc_score(y, y_pred_new)
+    print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
+    return w, b
 
 
 # Labels (0 or 1)
