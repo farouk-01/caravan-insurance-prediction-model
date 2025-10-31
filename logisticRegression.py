@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, roc_curve
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 
@@ -64,12 +64,20 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
             print(f"Iteration {i}: Cost = {cost}")
     return w, b
 
-def predict(X, w, b, t):
+def predict_probas(X, w, b):
     z = np.dot(X, w) + b
     p = sigmoid(z)
-    #print(np.min(p), np.max(p), np.mean(p))
+    return p
+
+def predict(X, w, b, t):
+    p = predict_probas(X, w, b)
     return (p >= t).astype(int)
 
+def youden_index_threshold(y_true, y_proba):
+    fpr, tpr, thresholds = roc_curve(y_true, y_proba)
+    J = tpr - fpr #TPR == sensitivity, FPR == 1 - specificity
+    best_index = np.argmax(J)
+    return thresholds[best_index], J[best_index]
 
 def print_model_stats(X, w, b, threshold):
     y_prediction = predict(X, w, b, threshold)
