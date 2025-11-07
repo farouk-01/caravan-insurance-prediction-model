@@ -3,6 +3,7 @@ import numpy as np
 import re
 import glob 
 import logisticRegression
+from sklearn.preprocessing import PolynomialFeatures
 
 def read_dictionnary(df):
     with open("insurance_data/dictionary.txt", "r") as f:

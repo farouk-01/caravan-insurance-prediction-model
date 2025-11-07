@@ -70,7 +70,12 @@ def youden_index_threshold(y_true, y_proba):
     best_index = np.argmax(J)
     return thresholds[best_index], J[best_index]
 
-def print_model_stats(X, y, w, b, threshold):
+def get_youden_threshold(X, y, w, b):
+    y_proba_terms = predict_probas(X, w, b)
+    threshold, J_test = youden_index_threshold(y, y_proba_terms)
+    return threshold
+
+def print_model_stats(X, y, w, b, threshold, f1):
     y_prediction = predict(X, w, b, threshold) #Rappel : thresholded -> accuracy et conf matrix
     y_probas = predict_probas(X, w, b)
     accuracy = np.mean(y_prediction == y)
@@ -80,6 +85,8 @@ def print_model_stats(X, y, w, b, threshold):
     print('Accuracy: ', accuracy)
     print(conf_matrix)
     print('AUC: ', auc)
+    if f1 is not None:
+        print('F1: ', f1)
 
 def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rate, ratio):
     y_probas = predict_probas(X_old, w_old, b_old)
@@ -95,15 +102,15 @@ def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rat
         new_auc = roc_auc_score(y, y_pred_new)
         print(f"Interaction {inter_name} : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def compare_auc_score(X_old, y, w_old, b_old, X_new, learning_rate, ratio):
-    y_probas = predict_probas(X_old, w_old, b_old)
-    auc_base = roc_auc_score(y, y_probas)
+def get_auc_score(X, y, w, b):
+    y_probas = predict_probas(X, w, b)
+    auc_score = roc_auc_score(y, y_probas)
+    return auc_score
 
-    w, b = logistic_regression(X_new, y, learning_rate=learning_rate, extra_weight=ratio, to_print=False)
-    y_probas_new = predict_probas(X_new, w, b)
-    new_auc = roc_auc_score(y, y_probas_new)
+def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
+    auc_base = get_auc_score(X_old, y, prev_model.w, prev_model.b)
+    new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
-    return w, b
 
 def find_best_lambda(lambdas, X_train, y_train, val_size=0.2, random_state=42):
     best_lambda = None
@@ -133,23 +140,19 @@ def overfitting_test(model_old, X_test, model_new, X_test_final):
     y_test_data = data.get_test_targets().to_numpy()
     compare_model_stats(X_test, y_test_data, model_old, model_new, X_new=X_test_final, isTestData=True)
 
-def f1_score_test(w, b):
-    X_test = data.get_test_data_with_terms()
-    y_test_data = data.get_test_targets()
-    #y_probas = predict_probas(X_test, w, b)
-
+def f1_score_threshold(X, y, w, b):
     thresholds = np.arange(0,1.01,0.01)
     f1_scores = []
 
     for t in thresholds:
-        y_pred = predict(X_test, w, b, t)
-        f1_scores.append(f1_score(y_test_data, y_pred))
+        y_pred = predict(X, w, b, t)
+        f1_scores.append(f1_score(y, y_pred))
 
     best_thresh = thresholds[np.argmax(f1_scores)]
     best_f1 = max(f1_scores)
 
     print(f"Best threshold est: {best_thresh}\nBest F1 est: {best_f1}")
-    return best_thresh
+    return best_thresh, best_f1
 
 def compare_model_stats(X, y, model_old, model_new, X_new=None, y_new=None, isTestData=False):
     if X_new is None:
@@ -170,5 +173,10 @@ def create_test_and_X_model(w, b, threshold, interactions=None):
     if interactions is not None:
         X_test = data.add_interactions_terms(X_test, interactions)
     X_test_final = X_test.to_numpy()
-    test_model = Model.Create(w, b, threshold)
+    test_model = Model.Model(w, b, threshold)
     return test_model, X_test_final
+
+def compare_interaction_scores(X_old, y, prev_model, curr_model, interactions_to_add):
+    X_with_new_terms = data.add_interactions_terms(X_old, interactions_to_add).to_numpy()
+
+    
