@@ -6,6 +6,7 @@ from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 from itertools import combinations
 import data
+import Model
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
@@ -46,6 +47,8 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
         else:
             cost = cost_function(X, y, w, b)
         dw, db = compute_gradients(X, y, w, b, extra_weight)
+        if l2_reg:
+            dw += (lambda_const / m) * w
         w -= learning_rate*dw
         b -= learning_rate*db
         if to_print and i % 100 == 0:
@@ -73,6 +76,7 @@ def print_model_stats(X, y, w, b, threshold):
     accuracy = np.mean(y_prediction == y)
     conf_matrix = confusion_matrix(y, y_prediction)
     auc = roc_auc_score(y, y_probas)
+    print('Threshold: ', threshold)
     print('Accuracy: ', accuracy)
     print(conf_matrix)
     print('AUC: ', auc)
@@ -90,13 +94,6 @@ def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rat
         y_pred_new = predict_probas(X_interaction, w, b)
         new_auc = roc_auc_score(y, y_pred_new)
         print(f"Interaction {inter_name} : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
-
-def add_interactions_terms(X, interactions):
-    X_new = X.copy()
-    for var1, var2 in interactions:
-        inter_name = f"{var1}_x_{var2}"
-        X_new[inter_name] = X_new[var1] * X_new[var2]
-    return X_new
 
 def compare_auc_score(X_old, y, w_old, b_old, X_new, learning_rate, ratio):
     y_probas = predict_probas(X_old, w_old, b_old)
@@ -132,39 +129,46 @@ def find_best_lambda(lambdas, X_train, y_train, val_size=0.2, random_state=42):
     print("Best lambda:", best_lambda)
     return best_lambda, best_auc
 
-def overfitting_test(interactions_to_add, w_old, b_old, w, b, threshold, previous_interactions_added=None):
+def overfitting_test(model_old, X_test, model_new, X_test_final):
+    y_test_data = data.get_test_targets().to_numpy()
+    compare_model_stats(X_test, y_test_data, model_old, model_new, X_new=X_test_final, isTestData=True)
+
+def f1_score_test(w, b):
+    X_test = data.get_test_data_with_terms()
+    y_test_data = data.get_test_targets()
+    #y_probas = predict_probas(X_test, w, b)
+
+    thresholds = np.arange(0,1.01,0.01)
+    f1_scores = []
+
+    for t in thresholds:
+        y_pred = predict(X_test, w, b, t)
+        f1_scores.append(f1_score(y_test_data, y_pred))
+
+    best_thresh = thresholds[np.argmax(f1_scores)]
+    best_f1 = max(f1_scores)
+
+    print(f"Best threshold est: {best_thresh}\nBest F1 est: {best_f1}")
+    return best_thresh
+
+def compare_model_stats(X, y, model_old, model_new, X_new=None, y_new=None, isTestData=False):
+    if X_new is None:
+        X_new = X
+    if y_new is None:
+        y_new = y
+    if isTestData:
+        print("(Avec test data)\n")
+    else:
+        print("(Avec training data)\n")
+    print("Old model :")
+    model_old.print_stats(X, y)
+    print("\nNew model :")
+    model_new.print_stats(X_new, y_new)
+    
+def create_test_and_X_model(w, b, threshold, interactions=None):
     X_test = data.get_test_data()
-    if previous_interactions_added is not None:
-        X_test = add_interactions_terms(X_test, previous_interactions_added)
-    X_test_final = add_interactions_terms(X_test, interactions_to_add)
-    y_test = data.get_test_targets()
-    y_test_data = y_test.to_numpy()
-
-    print_model_stats(X_test, y_test_data, w_old, b_old, threshold)    
-    print()
-    y_proba_test = predict_probas(X_test_final, w, b)
-    threshold_test, J_test = youden_index_threshold(y_test_data, y_proba_test)
-    print_model_stats(X_test_final, y_test_data, w, b, threshold_test)
-
-
-# Labels (0 or 1)
-# y_test_data = np.array(df['CARAVAN'].values)
-# unique, counts = np.unique(y_test_data, return_counts=True)
-
-#w, b = logistic_regression(X_small, y_small, learning_rate=0.01, iterations=1000)
-# print("Learned weights:", w)
-# print("Learned bias:", b)
-# print()
-# y_pred = predict(X_small, w, b)
-# print("Predictions:", y_pred)
-# print("True labels:", y_test_data)
-# print()
-# print("Confusion Matrix:\n", confusion_matrix(y_small, y_pred))
-# print("Accuracy:", accuracy_score(y_small, y_pred))
-# print()
-# model = LogisticRegression(max_iter=1000)
-# model.fit(X_small, y_small)
-# y_pred_sklearn = model.predict(X_small)
-# print("Sklearn predictions:", y_pred_sklearn)
-# print("Sklearn Logistic Regression Accuracy:", accuracy_score(y_small, y_pred_sklearn))
-
+    if interactions is not None:
+        X_test = data.add_interactions_terms(X_test, interactions)
+    X_test_final = X_test.to_numpy()
+    test_model = Model.Create(w, b, threshold)
+    return test_model, X_test_final

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import glob 
+import logisticRegression
 
 def read_dictionnary(df):
     with open("insurance_data/dictionary.txt", "r") as f:
@@ -71,6 +72,27 @@ def get_test_data():
     df.columns = col_names
 
     df = read_dictionnary(df)
+    return df
+
+def add_interactions_terms(X, interactions):
+    X_new = X.copy()
+    for var1, var2 in interactions:
+        inter_name = f"{var1}_x_{var2}"
+        X_new[inter_name] = X_new[var1] * X_new[var2]
+    return X_new
+
+def get_test_data_with_terms():
+    interactions_to_add_1 = [
+        ("PPERSAUT", "APLEZIER"),
+        ("PPERSAUT", "PPLEZIER"),
+        ("PPERSAUT", "PBRAND"),
+        ("APERSAUT", "PBRAND"),
+        ("PPLEZIER", "MINKGEM"),
+        ("PPLEZIER", "MKOOPKLA"),
+        ("PPLEZIER", "MHKOOP")
+    ]
+    df = get_test_data()
+    df = add_interactions_terms(df, interactions_to_add_1 )
     return df
 
 def get_test_targets():
