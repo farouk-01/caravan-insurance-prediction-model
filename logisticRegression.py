@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, roc_curve, roc_auc_score
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, roc_curve, roc_auc_score, precision_score, recall_score
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 from itertools import combinations
@@ -112,19 +112,19 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, val_size=0.2, random_state=42):
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val):
     best_lambda = None
     best_auc = 0
 
     #Ici il faut split le training data pour valider le modèle au lieu d'utiliser le test data
     #car on est entrain de  train le modèle ici, tandis que lorsqu'on comparais les auc score
     # on évaluais le modèle après l'avoir train 
-    X_train_part, X_val, y_train_part, y_val = train_test_split(
-        X_train, y_train, test_size=val_size, random_state=random_state
-    )
+    # X_train_part, X_val, y_train_part, y_val = train_test_split(
+    #     X_train, y_train, test_size=val_size, random_state=random_state
+    # )
 
     for lam in lambdas:
-        w, b = logistic_regression(X_train_part, y_train_part, l2_reg=True, lambda_const=lam, to_print=False)
+        w, b = logistic_regression(X_train, y_train, l2_reg=True, lambda_const=lam, to_print=False)
         y_val_probas = predict_probas(X_val, w, b)
         auc = roc_auc_score(y_val, y_val_probas)
 
@@ -140,7 +140,7 @@ def overfitting_test(model_old, X_test, model_new, X_test_final):
     y_test_data = data.get_test_targets().to_numpy()
     compare_model_stats(X_test, y_test_data, model_old, model_new, X_new=X_test_final, isTestData=True)
 
-def f1_score_threshold(X, y, w, b):
+def f1_score_threshold(X, y, w, b, to_print=False):
     thresholds = np.arange(0,1.01,0.01)
     f1_scores = []
 
@@ -151,16 +151,17 @@ def f1_score_threshold(X, y, w, b):
     best_thresh = thresholds[np.argmax(f1_scores)]
     best_f1 = max(f1_scores)
 
-    print(f"Best threshold est: {best_thresh}\nBest F1 est: {best_f1}")
+    if to_print:
+        print(f"Best threshold est: {best_thresh}\nBest F1 est: {best_f1}")
     return best_thresh, best_f1
 
-def compare_model_stats(X, y, model_old, model_new, X_new=None, y_new=None, isTestData=False):
+def compare_model_stats(X, y, model_old, model_new, X_new=None, y_new=None, isValData=False):
     if X_new is None:
         X_new = X
     if y_new is None:
         y_new = y
-    if isTestData:
-        print("(Avec test data)\n")
+    if isValData:
+        print("(Avec val data)\n")
     else:
         print("(Avec training data)\n")
     print("Old model :")
@@ -176,7 +177,27 @@ def create_test_and_X_model(w, b, threshold, interactions=None):
     test_model = Model.Model(w, b, threshold)
     return test_model, X_test_final
 
-def compare_interaction_scores(X_old, y, prev_model, curr_model, interactions_to_add):
-    X_with_new_terms = data.add_interactions_terms(X_old, interactions_to_add).to_numpy()
+def plot_threshold_metrics(model, X, y):
+    thresholds = np.arange(0,1.01,0.01)
+    f1_scores = []
+    precision_scores = []
+    recall_scores = []
 
+    for t in thresholds:
+        y_pred = predict(X, model.w, model.b, t)
+        f1_scores.append(f1_score(y, y_pred))
+        precision_scores.append(precision_score(y, y_pred))
+        recall_scores.append(recall_scores(y, y_pred))
+
+    plt.figure(figsize=(8,5))
+    plt.plot(thresholds, f1_scores, label="F1 Score", color="blue")
+    plt.plot(thresholds, precision_scores, label="Precision", color="green")
+    plt.plot(thresholds, recall_scores, label="Recall", color="red")
+    plt.xlabel("Threshold")
+    plt.ylabel("Score")
+    plt.title("Threshold vs F1 / Precision / Recall")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    
     

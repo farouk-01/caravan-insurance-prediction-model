@@ -9,13 +9,24 @@ class ModelTracker:
         if name is None:
             name = f"v{self.counter}"
             self.counter += 1
-        self.models[name] = model_obj
-        self.results.append({
-            'model': name,
-            'F1': model_obj.score_f1,
-            'threshold': model_obj.threshold,
-            'improvement': model_obj.improvement
-        })
+        if name in self.models:
+            print(f'Model {name} existe deja, overriding...')
+            for r in self.results:
+                if r['model'] == name:
+                    r.update({
+                        'F1': model_obj.score_f1,
+                        'threshold': model_obj.threshold,
+                        'improvement': model_obj.improvement
+                    })
+                break
+        else:
+            self.models[name] = model_obj
+            self.results.append({
+                'model': name,
+                'F1': model_obj.score_f1,
+                'threshold': model_obj.threshold,
+                'improvement': model_obj.improvement
+            })
         if set_preferred:
             self.preferred = name
         print(f"Model {name} saved\n")

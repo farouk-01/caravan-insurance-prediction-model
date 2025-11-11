@@ -3,7 +3,7 @@ import numpy as np
 import re
 import glob 
 import logisticRegression
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
 
 def read_dictionnary(df):
     with open("insurance_data/dictionary.txt", "r") as f:
@@ -50,6 +50,14 @@ def get_data():
 
     df = read_dictionnary(df)
     return df
+
+def get_split_train_eval_data(df):
+    X_train_full, y_train_full = get_split_data(df)
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train_full, y_train_full, test_size=0.2, random_state=42, stratify=y_train_full
+    )
+    return X_train, X_val, y_train, y_val
 
 def get_test_data():
     df = pd.read_table('insurance_data/ticeval2000.txt')
