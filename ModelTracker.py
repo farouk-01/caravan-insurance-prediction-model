@@ -65,5 +65,8 @@ class ModelTracker:
             return None
         return self.models[self.preferred]
     
-    def get_by_name(self, name):
-        return self.models[name]
+    def get_by_name(self, name, isCopy=True):
+        if isCopy:
+            return self.models[name].copy()
+        else:
+            return self.models[name]

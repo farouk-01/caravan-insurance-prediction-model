@@ -9,20 +9,20 @@ def read_dictionnary(df):
     with open("insurance_data/dictionary.txt", "r") as f:
         text = f.read()
 
-    var_ordinale = {}
+    var_categorical = {}
     col_descriptions = {}
     lines = text.splitlines()[3:89]
     for line in lines:
         words = line.split()
         var_name = words[1]
         description = " ".join(words[2:])
-        if  re.search(r'see L[134]', description): #ils sont ordinales
-            var_ordinale[var_name] = True
+        if  re.search(r'see L[02]', description): #ils sont ordinales
+            var_categorical[var_name] = True
         else:
-            var_ordinale[var_name] = False
+            var_categorical[var_name] = False
         col_descriptions[var_name] = description
     df.attrs['description'] = col_descriptions
-    df.attrs['ordinale'] = var_ordinale
+    df.attrs['categorical'] = var_categorical
 
     return df
 
@@ -126,8 +126,8 @@ def top_index_and_values(top_n, df):
     for (a, b), val in zip(top_index, top_values):
         print(f'{describe(a, df):<{50}} {a:<10} - {val:>5.4f}' )
 
-def get_var_by_types(df):
-    var_type = df.attrs['ordinale']
+def get_var_by_types(df): #todo change is_ordinale
+    var_type = df.attrs['categorical']
     ordinale_vars = [col for col, is_ordinale in var_type.items() if is_ordinale]
     discrete_vars = [col for col, is_ordinale in var_type.items() if not is_ordinale]
     return ordinale_vars, discrete_vars

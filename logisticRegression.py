@@ -12,41 +12,49 @@ def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
 #aka loss function
-def cost_function(X, y, w, b):
+def cost_function(X, y, w, b, extra_weight=None):
+    m = X.shape[0]
+    if extra_weight is None:
+        extra_weight = np.ones(m)
     z = np.dot(X, w) + b #prediction, comme a * e + b
     p = sigmoid(z) #or y hat
-    cost = -np.mean(y * np.log(p) + (1-y) * np.log(1-p))
+    cost = -np.mean(extra_weight * (y * np.log(p) + (1-y) * np.log(1-p)))
     return cost
 
-def cost_function_with_l2(X, y, w, b, lambda_const):
-    cost = cost_function(X, y, w, b)
+def cost_function_with_l2(X, y, w, b, lambda_const, extra_weight=None):
     m = X.shape[0]
+    if extra_weight is None:
+        extra_weight = np.ones(m)
+    cost = cost_function(X, y, w, b, extra_weight)
     l2_reg = (lambda_const / (2*m)) * np.sum(w**2)
     return cost + l2_reg
 
-def compute_gradients(X, y, w, b, extra_weight=1):
+def compute_gradients(X, y, w, b, extra_weight=None):
     m = X.shape[0]
     z = np.dot(X, w) + b
     p = sigmoid(z) #or y hat
-
-    weights = np.where(y==1, extra_weight, 1) #Ajoute extra_weight si target sinon ajoute rien (x1)
-
-    dw = np.dot(X.T, weights * (p-y)) / np.sum(weights) #transpose pour avoir (n x m) * (m x 1) = n x 1
-    db = np.sum(weights * (p-y)) / np.sum(weights) #on divise par weights car c sa la formule (pcq ta besoin du average)
+    if extra_weight is None:
+        extra_weight = np.ones(m)
+    dw = np.dot(X.T, extra_weight * (p-y)) / np.sum(extra_weight) #transpose pour avoir (n x m) * (m x 1) = n x 1
+    db = np.sum(extra_weight * (p-y)) / np.sum(extra_weight) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
 def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1, to_print=True, l2_reg=False, lambda_const=None):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
+    
     m, n = X.shape
     w = np.zeros(n) #array of n zeros, on init les weights
     b = 0 #learned bias
+
+    weights = np.where(y==1, extra_weight, 1)
+
     for i in range(iterations):
         if l2_reg:
-            cost = cost_function_with_l2(X, y, w, b, lambda_const)
+            cost = cost_function_with_l2(X, y, w, b, lambda_const, weights)
         else:
-            cost = cost_function(X, y, w, b)
-        dw, db = compute_gradients(X, y, w, b, extra_weight)
+            cost = cost_function(X, y, w, b, weights)
+        dw, db = compute_gradients(X, y, w, b, weights)
         if l2_reg:
             dw += (lambda_const / m) * w
         w -= learning_rate*dw
@@ -54,6 +62,35 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
         if to_print and i % 100 == 0:
             print(f"Iteration {i}: Cost = {cost}")
     return w, b
+
+def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, toPlot=False, **kwargs):
+    val_losses = []
+    f1_scores = []
+    for lr in lrs:
+        w,b = logistic_regression(X_train, y_train, learning_rate=lr, iterations=iterations, to_print=False, **kwargs)
+        val_pred = predict(X_val, w, b, 0.5)
+        val_losses.append(cost_function(X_val, y_val, w, b))
+        f1_scores.append(f1_score(y_val, val_pred, zero_division=0))
+    if toPlot:
+        fig, ax1 = plt.subplots()
+
+        ax1.semilogx(lrs, val_losses, marker='o', color='tab:red', label='val loss')
+        ax1.set_xlabel('learning rate')
+        ax1.set_ylabel('val loss', color='tab:red')
+        ax1.invert_yaxis()
+        ax1.tick_params(axis='y', labelcolor='tab:red')
+
+        ax2 = ax1.twinx()
+        ax2.semilogx(lrs, f1_scores, marker='o', color='tab:blue', label='val F1')
+        ax2.set_ylabel('val F1', color='tab:blue')
+        ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+        ax1.grid(which='both', linestyle='--', linewidth=0.5)
+
+        plt.title('Validation Loss & F1 vs Learning Rate')
+        plt.xticks(lrs, [str(lr) for lr in lrs])
+        plt.show()
+    return lrs, val_losses, f1_scores
 
 def predict_probas(X, w, b):
     z = np.dot(X, w) + b
@@ -128,7 +165,7 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val):
         y_val_probas = predict_probas(X_val, w, b)
         auc = roc_auc_score(y_val, y_val_probas)
 
-        print(f"Lambda: {lam}, AUC: {auc:.4f}")
+        print(f"Lambda: {lam}, AUC: {auc:.6f}")
 
         if auc > best_auc:
             best_auc = auc
@@ -140,8 +177,8 @@ def overfitting_test(model_old, X_test, model_new, X_test_final):
     y_test_data = data.get_test_targets().to_numpy()
     compare_model_stats(X_test, y_test_data, model_old, model_new, X_new=X_test_final, isTestData=True)
 
-def f1_score_threshold(X, y, w, b, to_print=False):
-    thresholds = np.arange(0,1.01,0.01)
+def f1_score_threshold(X, y, w, b, step=0.01, to_print=False):
+    thresholds = np.arange(0,1 + step, step)
     f1_scores = []
 
     for t in thresholds:
@@ -177,8 +214,8 @@ def create_test_and_X_model(w, b, threshold, interactions=None):
     test_model = Model.Model(w, b, threshold)
     return test_model, X_test_final
 
-def plot_threshold_metrics(model, X, y):
-    thresholds = np.arange(0,1.01,0.01)
+def plot_threshold_metrics(model, X, y, step=0.01):
+    thresholds = np.arange(0,1 + step ,step)
     f1_scores = []
     precision_scores = []
     recall_scores = []
@@ -186,8 +223,8 @@ def plot_threshold_metrics(model, X, y):
     for t in thresholds:
         y_pred = predict(X, model.w, model.b, t)
         f1_scores.append(f1_score(y, y_pred))
-        precision_scores.append(precision_score(y, y_pred))
-        recall_scores.append(recall_scores(y, y_pred))
+        precision_scores.append(precision_score(y, y_pred, zero_division=0))
+        recall_scores.append(recall_score(y, y_pred, zero_division=0))
 
     plt.figure(figsize=(8,5))
     plt.plot(thresholds, f1_scores, label="F1 Score", color="blue")
@@ -196,6 +233,34 @@ def plot_threshold_metrics(model, X, y):
     plt.xlabel("Threshold")
     plt.ylabel("Score")
     plt.title("Threshold vs F1 / Precision / Recall")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, ratio, weights_to_test, learning_rate):
+    recalls_scores = []
+    precision_scores = []
+    f1_scores = []
+
+    for weight in weights_to_test:
+        w, b = logistic_regression(X_train, y_train, learning_rate, extra_weight=ratio*weight, to_print=False)
+        y_pred = predict(X_val, w, b, threshold)
+        recalls_scores.append(recall_score(y_val, y_pred, zero_division=0))
+        precision_scores.append(precision_score(y_val, y_pred, zero_division=0))
+        f1_scores.append(f1_score(y_val, y_pred))
+
+    best_idx = np.argmax(f1_scores)
+    best_weight = weights_to_test[best_idx]
+    best_f1 = f1_scores[best_idx]
+
+    plt.figure(figsize=(8,5))
+    plt.plot(weights_to_test, recalls_scores, label='Recall', marker='o')
+    plt.plot(weights_to_test, precision_scores, label='Precision', marker='o')
+    plt.plot(weights_to_test, f1_scores, label='F1 Score', marker='o')
+    plt.scatter(best_weight, best_f1, color='red', s=100, label=f'Best F1: {best_f1:.3f} at weight {best_weight}')
+    plt.xlabel('Positive Class Weight')
+    plt.ylabel('Score')
+    plt.title('Effect of Positive Class Weight on Metrics')
     plt.legend()
     plt.grid(True)
     plt.show()
