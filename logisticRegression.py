@@ -8,13 +8,12 @@ from itertools import combinations
 import data
 import Model
 
-def sigmoid(x):
-    if x >= 0:
-        z = np.exp(-x)
-        return 1/(1 + z)
-    else:
-        z = np.exp(x)
-        return z / (1 + z)
+def sigmoid(z):
+    return np.where( 
+        z>=0, 
+        1 / (1 + np.exp(-z)), 
+        np.exp(z) / (1 + np.exp(z))
+    )
 
 #aka loss function
 def cost_function(X, y, w, b, extra_weight=None):
