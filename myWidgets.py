@@ -2,6 +2,7 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output, HTML, Markdown, Math
 import scipy.stats as sp
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class AllVarComparator:
     def __init__(self, vars_to_compare, df):
@@ -66,7 +67,7 @@ class AllVarComparator:
                 with self.results_out:
                     clear_output(wait=True)
                     display(Math('A \\cap B'))
-                    display(get_crossTab().style.background_gradient(cmap='Greens'))
+                    display(get_crossTab().style.background_gradient(cmap='Greens', axis='columns'))
 
             def show_inter(btn):
                 with self.results_out:
@@ -104,7 +105,122 @@ class AllVarComparator:
     
     def get_widget(self):
         return self.container
+
+class TripleAllVarComparator:
+    def __init__(self, vars_to_compare, df):
+        self.vars_to_compare = vars_to_compare
+        self.df = df
+        self.target = "CARAVAN"
+
+        self.dropdown1 = widgets.Dropdown(
+            options=self.vars_to_compare,
+            description='Variable ...'
+        )
+
+        self.dropdown2 = widgets.Dropdown(
+            options=self.vars_to_compare,
+            description='Variable ...'
+        )
+
+        self.dropdown1.observe(self._on_dropdown_change, names='value')
+        self.dropdown2.observe(self._on_dropdown_change, names='value')
+
+        self.out = widgets.Output()
+
+        self.container = widgets.VBox([
+            widgets.HBox([self.dropdown1, self.dropdown2]), 
+            self.out
+        ])
     
+    def _on_dropdown_change(self, change):
+        var1 = self.dropdown1.value
+        var2 = self.dropdown2.value
+    
+        if not hasattr(self, 'results_out'):
+            self.results_out = widgets.Output()
+        if not hasattr(self, 'description_out'):
+            self.description_out = widgets.Output()
+
+        with self.results_out:
+            clear_output(wait=True)
+
+        with self.description_out:
+            clear_output(wait=True)
+            display(Markdown(f"$A = $ {self.df.attrs['description'][var1]}, $B = $ {self.df.attrs['description'][var2]}"))
+
+        if not hasattr(self, 'btn_hbox'):
+            btn_cross = widgets.Button(description='CrossTab')
+            self.btn_hbox = widgets.HBox([btn_cross])
+
+            self.container = widgets.VBox([self.description_out, self.btn_hbox, self.results_out])
+            display(self.container)
+
+            def get_crossTab_norm():
+                var1 = self.dropdown1.value
+                var2 = self.dropdown2.value
+                col1 = self.df[var1]
+                col2 = self.df[var2]
+                crossTab_norm = pd.crosstab(col1, col2,  self.df[self.target], aggfunc='mean').fillna(0)
+                crossTab_norm['variation'] = crossTab_norm.replace(0, pd.NA).max(axis=1) - crossTab_norm.replace(0, pd.NA).min(axis=1)
+                return crossTab_norm.round(3)
+            
+            def get_crossTab(aggfunc='sum'):
+                var1 = self.dropdown1.value
+                var2 = self.dropdown2.value
+                col1 = self.df[var1]
+                col2 = self.df[var2]
+                crossTab = pd.crosstab(col1, col2,  self.df[self.target] == 1, aggfunc=aggfunc)
+                return crossTab.round(3)
+            
+            def show_crossTab(btn):
+                with self.results_out:
+                    clear_output(wait=True)
+                    crossTab_sum_true = get_crossTab().fillna(0)
+                    crossTab_count = get_crossTab('count').fillna(0)
+                    crossTab_norm = get_crossTab_norm()
+                    crossTab_norm = crossTab_norm.loc[~(crossTab_norm == 0).all(axis=1)]                    
+                    styled_norm = crossTab_norm.style.background_gradient(cmap='Greens', axis='columns').format('{:.3f}').set_caption("Normalized (Probabilities)").to_html()
+                    styled_sum = crossTab_sum_true.style.background_gradient(cmap='Greens').format('{:.0f}').set_caption("Raw Counts (CARAVAN == 1)").to_html()
+                    styled_counts = crossTab_count.style.background_gradient(cmap='Greens').format('{:.0f}').set_caption("Raw Counts").to_html()
+                    display(HTML(f"""
+                    <div style="display: flex; gap: 5px;">
+                        <div style="flex: 1">
+                            {styled_norm}
+                        </div>
+                        
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                            {styled_sum}
+                            {styled_counts}
+                        </div>
+                    </div>
+                    """))
+
+                    plt.figure(figsize=(10,6))
+                    # Exclude the 'variation' column for plotting
+                    plot_data = crossTab_norm.drop(columns='variation', errors='ignore')
+                    
+                    for idx in plot_data.index:
+                        plt.plot(plot_data.columns, plot_data.loc[idx], marker='o', label=f'{self.dropdown1.value}={idx}')
+                    
+                    plt.xlabel(self.dropdown2.value)
+                    plt.ylabel(f'P({self.target}=1)')
+                    plt.title(f'Interaction effect: {self.dropdown1.value} x {self.dropdown2.value}')
+                    plt.legend()
+                    plt.grid(True)
+                    plt.show()
+
+            btn_cross.on_click(show_crossTab)
+
+    def __len__(self):
+        return len(self.vars_to_compare)
+    
+    def __getitem__(self, index):
+        return self.vars_to_compare[index]
+    
+    def get_widget(self):
+        return self.container
+
+
 #TODO : ajouter que sa affiche le premier article dès le début  
 class SingleVarComparator:
     def __init__(self, vars_to_compare, var_to_be_compared, df, cmap='coolwarm', axis=0):

@@ -22,6 +22,7 @@ def cost_function(X, y, w, b, extra_weight=None):
         extra_weight = np.ones(m)
     z = np.dot(X, w) + b #prediction, comme a * e + b
     p = sigmoid(z) #or y hat
+    p = np.clip(p, 1e-15, 1 - 1e-15)
     cost = -np.mean(extra_weight * (y * np.log(p) + (1-y) * np.log(1-p)))
     return cost
 
@@ -43,7 +44,7 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     db = np.sum(extra_weight * (p-y)) / np.sum(extra_weight) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1, to_print=True, l2_reg=False, lambda_const=None):
+def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1, to_print=True, return_costs=False, l2_reg=False, lambda_const=None):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
     
@@ -52,6 +53,7 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
     b = 0 #learned bias
 
     weights = np.where(y==1, extra_weight, 1)
+    cost_list = []
 
     for i in range(iterations):
         if l2_reg:
@@ -65,14 +67,18 @@ def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=
         b -= learning_rate*db
         if to_print and i % 100 == 0:
             print(f"Iteration {i}: Cost = {cost}")
-    return w, b
+        cost_list.append(cost)
+    if return_costs:
+        return w, b, cost_list
+    else: 
+        return w, b
 
 def predict_probas(X, w, b):
     z = np.dot(X, w) + b
     p = sigmoid(z)
     return p
 
-def predict(X, w, b, t):
+def predict(X, w, b, t=0.5):
     p = predict_probas(X, w, b)
     return (p >= t).astype(int)
 
