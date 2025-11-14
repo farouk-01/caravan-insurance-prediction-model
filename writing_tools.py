@@ -27,8 +27,14 @@ def crossTab_norm(var1, var2, df, min_count = 5):
         ct2 = stats_formula.esperence_filter(counts2, ct2)
         diff1 = stats_formula.variation_crossTab(ct1, df, var1)
         diff2 = stats_formula.variation_crossTab(ct2, df, var2)
-        diff1_aligned = diff1.reindex_like(diff2).fillna(0)
-        diff_combined = np.maximum(diff1_aligned, diff2)
+
+        common_index = diff1.index.union(diff2.index)
+        common_columns = diff1.columns.union(diff2.columns)
+        
+        diff1_aligned = diff1.reindex(index=common_index, columns=common_columns, fill_value=0)
+        diff2_aligned = diff2.reindex(index=common_index, columns=common_columns, fill_value=0)
+
+        diff_combined = np.maximum(diff1_aligned, diff2_aligned)
         crossTab_norm = pd.DataFrame(diff_combined, index=diff1_aligned.index, columns=diff1_aligned.columns)
         #crossTab_norm = stats_formula.variation_crossTab(crossTab_norm, df, var1)
         
@@ -39,7 +45,7 @@ def crossTab_norm(var1, var2, df, min_count = 5):
 
 
         crossTab_norm = crossTab_norm.reset_index()
-        crossTab_norm = crossTab_norm.rename(columns={var2: f"{var1}/{var2}"})
+        crossTab_norm = crossTab_norm.rename(columns={'index': f"{var1}/{var2}"})
         return crossTab_norm.round(4)
 
 def crossTab_norm_to_markdown(var1, var2, df):
