@@ -2,18 +2,36 @@ import pandas as pd
 import numpy as np
 import stats_formula
 
-def crossTab_with_caravan_to_markdown(df, var1, isProb = False):
-    ct = pd.crosstab(df['CARAVAN'], df[var1])
+def crossTab_with_caravan_to_markdown(df, var1, isFreq=False):
+    ct = pd.crosstab(df[var1], df['CARAVAN'])
     prob = ct.div(ct.sum(axis=0), axis=1)
 
-    counts_row = ['CARAVAN = 1'] + ct.loc[1].tolist()
-    prob_row = [f'P(CARAVAN = 1\\|{var1})'] + [f"{v:.4f}" for v in prob.loc[1].tolist()]
+    if isFreq:
+        freq_tbl = ct.copy()
+        freq_tbl.insert(0, var1, freq_tbl.index)
+        
+        row_totals = freq_tbl[[1]].sum(axis=1)
+        grand_total = row_totals.sum()
 
-    combined = pd.DataFrame(
-        [counts_row, prob_row],
-        columns=[var1] + ct.columns.tolist()
-    )
-    print(combined.to_markdown(index=False))
+        freq_tbl[f"P({var1})"] = row_totals / grand_total
+
+        freq_tbl.drop(columns=0, inplace=True)
+        freq_tbl.sort_values(by=1, inplace=True, ascending=False)
+
+        freq_tbl[f'cumul P({var1})'] = freq_tbl[f"P({var1})"].cumsum()
+
+        freq_tbl.rename(columns={1: 'CARAVAN = 1'}, inplace=True)
+        print(freq_tbl.to_markdown(index=False))
+    else:
+
+        counts_row = ['CARAVAN = 1'] + ct.loc[1].tolist()
+        prob_row = [f'P(CARAVAN = 1\\|{var1})'] + [f"{v:.4f}" for v in prob.loc[1].tolist()]
+
+        combined = pd.DataFrame(
+            [counts_row, prob_row],
+            columns=[var1] + ct.columns.tolist()
+        )
+        print(combined.to_markdown(index=False))
 
 def crossTab_with_var2_to_markdown(df, var1, var2, isProb = False):
     ct = pd.crosstab(df[var1], df[var2])
@@ -42,26 +60,17 @@ def crossTab_norm(var1, var2, df, min_count = 5):
         ct2 = stats_formula.esperence_filter(counts2, ct2)
         diff1 = stats_formula.variation_crossTab(ct1, df, var1)
         diff2 = stats_formula.variation_crossTab(ct2, df, var2)
+        # diff1 = ct1
+        # diff2 = ct2
 
-        #Bug: no matter l'ordre de var1 et var2, common_index et common_columns 
-        #garde les mm valeurs, donc le tableau va tjrs afficher le mm ordre pour row/col
-        #en attendant juste verifie que c'est le bon ordre
-        #Index sera tjrs lui avec le plus petit nombre d'index
-        common_index = ct1.index.intersection(ct2.index) 
-        common_columns = ct1.columns.union(ct2.columns) 
+        diff2 = diff2.T
+
+        common_index = diff1.index.intersection(diff2.index) 
+        common_columns = diff1.columns.union(diff2.columns) 
         
         diff1_aligned = diff1.reindex(index=common_index, columns=common_columns, fill_value=0)
         diff2_aligned = diff2.reindex(index=common_index, columns=common_columns, fill_value=0)
 
-        #Le bug en haut + sa peut confondre, par exemple si X = 0 et Z = 8
-        #On pourrait obtenir 0x8 = 0 (X x Z), mais 8x0 (Z x X)= 0.043 
-        #Je crois c'est correct parce que toute facon un interaction terms est seulement une multiplication
-        #Donc X x Z = Z x X. La raison pourquoi j'ai des valeurs différentes est du au méthode
-        #esperence_filter() qui filtre selon l'esperance attendu selon la ligne donc l'esperence peut changer 
-        #de variable a une autre. Pareil pour variation_crossTab
-        #Ensuite quand je fais np.maximum, je prend le plus élevé des deux termes 
-        #pour ne pas manquer de terme significatif
-        #C'est pas urgent à regler
         diff_combined = np.maximum(diff1_aligned, diff2_aligned)
 
         crossTab_norm = pd.DataFrame(diff_combined, index=diff1_aligned.index, columns=diff1_aligned.columns) 
@@ -71,7 +80,7 @@ def crossTab_norm(var1, var2, df, min_count = 5):
 
 
         crossTab_norm = crossTab_norm.reset_index()
-        crossTab_norm = crossTab_norm.rename(columns={'index': f"{var1}/{var2}"})
+        crossTab_norm = crossTab_norm.rename(columns={var1: f"{var1}/{var2}"})
         return crossTab_norm.round(4)
 
 def crossTab_norm_to_markdown(var1, var2, df):
