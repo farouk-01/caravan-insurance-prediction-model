@@ -96,16 +96,20 @@ def get_youden_threshold(X, y, w, b):
 def print_model_stats(X, y, w, b, threshold, f1):
     y_prediction = predict(X, w, b, threshold) #Rappel : thresholded -> accuracy et conf matrix
     y_probas = predict_probas(X, w, b)
-    accuracy = np.mean(y_prediction == y)
+    #accuracy = np.mean(y_prediction == y)
     conf_matrix = confusion_matrix(y, y_prediction)
     auc = roc_auc_score(y, y_probas)
-    print('Threshold: ', threshold)
-    print('Accuracy: ', accuracy)
+    #print('Threshold: ', threshold)
+    #print('Accuracy: ', accuracy)
     print(conf_matrix)
-    print('AUC: ', auc)
+    print(f'AUC: {auc:.4f}')
     if f1 is not None:
         print('F1: ', f1)
-
+    else:
+        y_pred = predict(X,w,b)
+        f1 = f1_score(y, y_pred)
+        print(f'F1: {f1:.4f}')
+        
 def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rate, ratio):
     y_probas = predict_probas(X_old, w_old, b_old)
     auc_base = roc_auc_score(y, y_probas)

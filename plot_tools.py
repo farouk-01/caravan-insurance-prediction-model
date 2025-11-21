@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import logisticRegression as logReg
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-
 def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate):
     recalls_scores = []
     precision_scores = []

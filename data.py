@@ -111,8 +111,8 @@ def get_test_targets():
 
 
 def get_split_data(df):
-    X = df.drop('CARAVAN', axis=1)
-    y = df['CARAVAN']
+    X = df.copy()
+    y = X.pop('CARAVAN')
 
     return X, y
 
