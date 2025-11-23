@@ -17,10 +17,14 @@ class Model:
         y_pred = logisticRegression.predict(X, self.w, self.b, self.threshold)
         return y_pred
     
-    def print_stats(self, X, y):
+    def print_stats(self, X, y, threshold=None):
         if (self.improvement != ""):
             print(self.improvement)
-        logisticRegression.print_model_stats(X, y, self.w, self.b, self.threshold, self.score_f1)
+        if threshold is None:
+            t = self.threshold
+        else:
+            t = threshold
+        logisticRegression.print_model_stats(X, y, self.w, self.b, t, self.score_f1)
 
     def copy(self):
         return copy.deepcopy(self)

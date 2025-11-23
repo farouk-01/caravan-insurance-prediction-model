@@ -44,34 +44,65 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     db = np.sum(extra_weight * (p-y)) / np.sum(extra_weight) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X, y, learning_rate=0.01, iterations=1000, extra_weight=1, to_print=True, return_costs=False, l2_reg=False, lambda_const=None):
+def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=100, min_delta=1e-6, iterations=1000, extra_weight=1, to_print=True, return_costs=False, l2_reg=False, lambda_const=None):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
     
-    m, n = X.shape
+    m, n = X_train.shape
     w = np.zeros(n) #array of n zeros, on init les weights
     b = 0 #learned bias
 
-    weights = np.where(y==1, extra_weight, 1)
-    cost_list = []
+    weights = np.where(y_train==1, extra_weight, 1)
+    train_cost_list = []
+    val_cost_list = []
 
+    best_val_loss = float('inf')
+    patience_counter = 0
+    best_w, best_b = None, None
     for i in range(iterations):
         if l2_reg:
-            cost = cost_function_with_l2(X, y, w, b, lambda_const, weights)
+            train_cost = cost_function_with_l2(X_train, y_train, w, b, lambda_const, weights)
         else:
-            cost = cost_function(X, y, w, b, weights)
-        dw, db = compute_gradients(X, y, w, b, weights)
+            train_cost = cost_function(X_train, y_train, w, b, weights)
+
+        if X_val is not None and y_val is not None:
+            val_cost = cost_function(X_val, y_val, w, b, extra_weight=1)
+            val_cost_list.append(val_cost)
+
+            if val_cost < best_val_loss - min_delta:
+                best_val_loss = val_cost
+                best_w, best_b = w.copy(), b
+                patience_counter = 0
+            else:
+                patience_counter += 1
+            
+            if patience_counter >= patience:
+                if to_print:
+                    print(f"Early stopping a l'iteration {i}. Best Loss: {best_val_loss:.6f}")
+                if return_costs:
+                    # Retourner les listes de coûts tronquées jusqu'à l'arrêt
+                    return best_w, best_b, train_cost_list[:i+1], val_cost_list[:i+1]
+                else:
+                    return best_w, best_b
+
+        dw, db = compute_gradients(X_train, y_train, w, b, weights)
         if l2_reg:
             dw += (lambda_const / m) * w
         w -= learning_rate*dw
         b -= learning_rate*db
         if to_print and i % 100 == 0:
-            print(f"Iteration {i}: Cost = {cost}")
-        cost_list.append(cost)
-    if return_costs:
-        return w, b, cost_list
+            val_info = f' | Val cos =  {val_cost:.4f}' if X_val is not None and y_val is not None else ''
+            print(f"Iteration {i}: Train cost = {train_cost:.4f}{val_info}")
+        train_cost_list.append(train_cost)
+    if X_val is not None and y_val is not None:
+        final_w, final_b = best_w, best_b
     else: 
-        return w, b
+        final_w, final_b = w, b
+    
+    if return_costs:
+        return final_w, final_b, train_cost_list, val_cost_list
+    else: 
+        return final_w, final_b
 
 def predict_probas(X, w, b):
     z = np.dot(X, w) + b
@@ -93,14 +124,14 @@ def get_youden_threshold(X, y, w, b):
     threshold, J_test = youden_index_threshold(y, y_proba_terms)
     return threshold
 
-def print_model_stats(X, y, w, b, threshold, f1):
+def print_model_stats(X, y, w, b, threshold=0.5, f1=None):
     y_prediction = predict(X, w, b, threshold) #Rappel : thresholded -> accuracy et conf matrix
     y_probas = predict_probas(X, w, b)
-    #accuracy = np.mean(y_prediction == y)
+    accuracy = np.mean(y_prediction == y)
     conf_matrix = confusion_matrix(y, y_prediction)
     auc = roc_auc_score(y, y_probas)
     #print('Threshold: ', threshold)
-    #print('Accuracy: ', accuracy)
+    print('Accuracy: ', accuracy)
     print(conf_matrix)
     print(f'AUC: {auc:.4f}')
     if f1 is not None:
@@ -134,29 +165,22 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, X_val, y_val):
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1):
     best_lambda = None
-    best_auc = 0
-
-    #Ici il faut split le training data pour valider le modèle au lieu d'utiliser le test data
-    #car on est entrain de  train le modèle ici, tandis que lorsqu'on comparais les auc score
-    # on évaluais le modèle après l'avoir train 
-    # X_train_part, X_val, y_train_part, y_val = train_test_split(
-    #     X_train, y_train, test_size=val_size, random_state=random_state
-    # )
+    best_f1 = 0
 
     for lam in lambdas:
-        w, b = logistic_regression(X_train, y_train, l2_reg=True, lambda_const=lam, to_print=False)
-        y_val_probas = predict_probas(X_val, w, b)
-        auc = roc_auc_score(y_val, y_val_probas)
+        w, b = logistic_regression(X_train, y_train, l2_reg=True, lambda_const=lam, to_print=False, extra_weight=extra_weight)
+        y_val_pred = predict(X_val, w, b)
+        f1 = f1_score(y_val, y_val_pred)
 
-        print(f"Lambda: {lam}, AUC: {auc:.6f}")
+        print(f"Lambda: {lam}, F1: {f1:.4f}")
 
-        if auc > best_auc:
-            best_auc = auc
+        if f1 > best_f1:
+            best_f1 = f1
             best_lambda = lam
     print("Best lambda:", best_lambda)
-    return best_lambda, best_auc
+    return best_lambda, best_f1
 
 def overfitting_test(model_old, X_test, model_new, X_test_final):
     y_test_data = data.get_test_targets().to_numpy()

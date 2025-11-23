@@ -1,4 +1,6 @@
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -58,3 +60,4 @@ def find_correlated_cols(df, threshold=0.95, toPlot=True):
             if corr_value > threshold:
                 strong_pairs.append((row, col))
     return strong_pairs
+

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import logisticRegression as logReg
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate):
+def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate=0.01):
     recalls_scores = []
     precision_scores = []
     f1_scores = []
@@ -64,56 +64,91 @@ def plot_threshold_metrics(model, X, y, step=0.01):
     plt.grid(True)
     plt.show()
 
-def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, toPlot=False, **kwargs):
+def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plotF1=False, toPrint=False, toPlot=False, **kwargs):
     val_losses = []
     f1_scores = []
     cost_min = []
     cost_max = []
     for lr in lrs:
-        w,b, cost_list = logReg.logistic_regression(X_train, y_train, learning_rate=lr, iterations=iterations, return_costs=True, to_print=False, **kwargs)
+        w,b, train_costs, val_costs = logReg.logistic_regression(
+            X_train, y_train, X_val, y_val,
+            learning_rate=lr, 
+            iterations=iterations, 
+            return_costs=True,  
+            to_print=toPrint,
+            **kwargs
+        )
+        #attention c'est le validation test ici, donc pas de extra_weight
+        val_losses.append(val_costs[-1])
+
         val_pred = logReg.predict(X_val, w, b, 0.5)
-        val_weights = np.where(y_val == 1, kwargs.get('extra_weight', 1), 1)
-        val_losses.append(logReg.cost_function(X_val, y_val, w, b, extra_weight=val_weights))
         f1_scores.append(f1_score(y_val, val_pred, zero_division=0))
 
         last_10cost = max(1, int(0.1 * iterations))
-        cost_min.append(np.min(cost_list[-last_10cost:]))
-        cost_max.append(np.max(cost_list[-last_10cost:]))
+        cost_min.append(np.min(val_costs[-last_10cost:]))
+        cost_max.append(np.max(val_costs[-last_10cost:]))
+
+    best_idx = np.argmax(f1_scores)
+    best_lr = lrs[best_idx]
+    best_f1 = f1_scores[best_idx]
     if toPlot:
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=(12,8))
 
         ax1.semilogx(lrs, val_losses, marker='o', color='tab:red', label='val loss')
-        ax1.fill_between(lrs, cost_min, cost_max, color='orange', alpha=0.2, label='Cost Oscillation')
+        ax1.fill_between(lrs, cost_min, cost_max, color='orange', alpha=0.5, label='Cost Oscillation')
         ax1.set_xlabel('learning rate')
         ax1.set_ylabel('val loss', color='tab:red')
-        #ax1.invert_yaxis()
+        ax1.invert_yaxis()
         ax1.tick_params(axis='y', labelcolor='tab:red')
 
         ax2 = ax1.twinx()
-        ax2.semilogx(lrs, f1_scores, marker='o', color='tab:blue', label='val F1')
+        if plotF1:
+            ax2.semilogx(lrs, f1_scores, marker='o', color='tab:blue', label='val F1')
+            ax2.scatter(best_lr, best_f1, s=100, color='green', label=f'Best f1: {best_f1:.4f} at lr of {best_lr:.6f}')
         ax2.set_ylabel('val F1', color='tab:blue')
         ax2.tick_params(axis='y', labelcolor='tab:blue')
+
 
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
-
         ax1.grid(which='both', linestyle='--', linewidth=0.5)
-
         plt.title('Validation Loss & F1 vs Learning Rate')
-        plt.xticks(lrs, [f"{lr:.3f}" for lr in lrs])
+        #plt.xticks(lrs, [f"{lr:.3f}" for lr in lrs])
         plt.show()
     return val_losses, f1_scores
+
+def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, to_print=False, **kwargs):
+    w, b, train_costs, val_costs = logReg.logistic_regression(
+        X_train, y_train, X_val, y_val,
+        learning_rate=learning_rate,
+        iterations=epochs_max,
+        return_costs=True,
+        to_print=to_print,
+        **kwargs 
+    )
+    iterations = range(1, epochs_max + 1)
+
+    plt.figure(figsize=(10, 6))
+    #plt.plot(iterations, train_costs, label='Training Loss', color='blue')
+    plt.plot(iterations, val_costs, label='Validation Loss', color='red')
+    
+    plt.title(f'Convergence du Modele (LR={learning_rate:.6f})')
+    plt.xlabel('Epoques/Iterations')
+    plt.ylabel('Perte (Loss)')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.show()
 
 def epochs_grid_search(X_train, y_train, X_val, y_val, epochs_list, learning_rate, **kwargs):
     val_losses = []
     f1_scores = []
 
-    for epochs in epochs_list:
+    for epoch in epochs_list:
         w, b = logReg.logistic_regression(
             X_train, y_train,
             learning_rate=learning_rate,
-            iterations=epochs,
+            iterations=epoch,
             to_print=False,
             **kwargs
         )
