@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import logisticRegression as logReg
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate=0.01):
+def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate=0.01, **kwargs):
     recalls_scores = []
     precision_scores = []
     f1_scores = []
 
     for weight in weights_to_test:
-        w, b = logReg.logistic_regression(X_train, y_train, learning_rate, extra_weight=weight, to_print=False)
+        w, b = logReg.logistic_regression(X_train, y_train, X_val, y_val, learning_rate, extra_weight=weight, to_print=False, **kwargs)
         y_pred = logReg.predict(X_val, w, b, threshold)
         recalls_scores.append(recall_score(y_val, y_pred, zero_division=0))
         precision_scores.append(precision_score(y_val, y_pred, zero_division=0))
@@ -98,7 +98,7 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plotF1=
         ax1.fill_between(lrs, cost_min, cost_max, color='orange', alpha=0.5, label='Cost Oscillation')
         ax1.set_xlabel('learning rate')
         ax1.set_ylabel('val loss', color='tab:red')
-        ax1.invert_yaxis()
+        #ax1.invert_yaxis()
         ax1.tick_params(axis='y', labelcolor='tab:red')
 
         ax2 = ax1.twinx()
@@ -136,6 +136,50 @@ def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, 
     plt.title(f'Convergence du Modele (LR={learning_rate:.6f})')
     plt.xlabel('Epoques/Iterations')
     plt.ylabel('Perte (Loss)')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.show()
+
+
+def train_val_accuracy_plot(X_train, y_train, X_val, y_val, learning_rate, epochs_max, **kwargs):
+    w, b, train_costs, val_costs, w_history, b_history = logReg.logistic_regression(
+        X_train, y_train, X_val, y_val,
+        learning_rate=learning_rate,
+        iterations=epochs_max,
+        return_costs=True,
+        return_weight_history=True,
+        **kwargs 
+    )
+    
+    num_epochs_run = len(w_history) 
+    iterations_run = range(1, num_epochs_run + 1)
+    
+    print(f"w_final.shape: {w.shape}")
+    print(f"X_train.shape: {X_train.shape}")
+    print(f"X_val.shape: {X_val.shape}")
+    print(f"Nombre d'epoques reellement executees (w_history len): {num_epochs_run}")
+
+    
+    train_accuracies = []
+    val_accuracies = []
+
+    for epoch_index in range(num_epochs_run):
+        w_epoch = w_history[epoch_index]
+        b_epoch = b_history[epoch_index] 
+        
+        y_train_pred = logReg.predict(X_train, w_epoch, b_epoch, 0.5)
+        y_val_pred = logReg.predict(X_val, w_epoch, b_epoch, 0.5)
+        
+        train_accuracies.append(np.mean(y_train_pred == y_train))
+        val_accuracies.append(np.mean(y_val_pred == y_val))
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(iterations_run, train_accuracies, label='Training Accuracy', color='blue') # Utiliser iterations_run
+    plt.plot(iterations_run, val_accuracies, label='Validation Accuracy', color='orange') # Utiliser iterations_run
+    
+    plt.title(f'Accuracy vs Epochs (LR={learning_rate:.6f})')
+    plt.xlabel('Epoques/Iterations')
+    plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.show()

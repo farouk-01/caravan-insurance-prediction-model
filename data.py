@@ -51,12 +51,17 @@ def get_data():
     df = read_dictionnary(df)
     return df
 
-def get_split_train_eval_data(df):
+def get_split_train_eval_data(df, toNpy=False):
     X_train_full, y_train_full = get_split_data(df)
 
     X_train, X_val, y_train, y_val = train_test_split(
         X_train_full, y_train_full, test_size=0.2, random_state=42, stratify=y_train_full
     )
+    if toNpy:
+        X_train = X_train.to_numpy()
+        X_val = X_val.to_numpy()
+        y_train = y_train.to_numpy()
+        y_val = y_val.to_numpy()
     return X_train, X_val, y_train, y_val
 
 def get_test_data():

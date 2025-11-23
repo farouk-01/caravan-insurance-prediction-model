@@ -11,6 +11,7 @@ class ModelTracker:
             self.counter += 1
         if name in self.models:
             print(f'Model {name} existe deja, overriding...')
+            self.models[name] = model_obj
             for r in self.results:
                 if r['model'] == name:
                     r.update({
