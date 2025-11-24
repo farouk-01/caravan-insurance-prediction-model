@@ -280,4 +280,16 @@ def get_dict(level):
 
     return level_dicts.get(level.upper(), None)
 
+def apply_Lx_to_index(idx, name, level):
+    lx = get_dict(level)
+
+    # 1. Match the pattern name_digit (e.g. MOSTYPE_8)
+    match = re.search(rf"{name}_(\d+)", idx)
+    if not match:
+        return idx  # Nothing to replace
     
+    code = int(match.group(1))
+    label = lx.get(code, f"{name}_{code}")  # Fallback if key not found
+
+    # 2. Replace ONLY the matched part, leave the rest untouched
+    return idx[:match.start()] + label + idx[match.end():]
