@@ -30,6 +30,7 @@ def plot_mi_scores(scores):
 def create_interaction_terms(df, var1, var2, terms:str, isVar1OneHot=False):
     items = terms.replace(" ", "").split(",")
     pairs = []
+    new_cols ={}
     for item in items:
         a,b = item.split("x")
         pairs.append((int(a), int(b)))
@@ -37,9 +38,11 @@ def create_interaction_terms(df, var1, var2, terms:str, isVar1OneHot=False):
     for a,b in pairs:
         col_name = f"{var1}_{a}_x_{var2}_{b}"
         if isVar1OneHot:
-            df[col_name] = (df[f'{var1}_{a}'] & (df[var2] == b)).astype(int) 
+            new_cols[col_name] = (df[f'{var1}_{a}'] & (df[var2] == b)).astype(int) 
         else: 
-            df[col_name] = ((df[var1] == a) & (df[var2] == b)).astype(int)
+            new_cols[col_name] = ((df[var1] == a) & (df[var2] == b)).astype(int)
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
     return df
 
 def find_correlated_cols(df, threshold=0.95, toPlot=True):

@@ -153,13 +153,7 @@ def train_val_accuracy_plot(X_train, y_train, X_val, y_val, learning_rate, epoch
     
     num_epochs_run = len(w_history) 
     iterations_run = range(1, num_epochs_run + 1)
-    
-    print(f"w_final.shape: {w.shape}")
-    print(f"X_train.shape: {X_train.shape}")
-    print(f"X_val.shape: {X_val.shape}")
-    print(f"Nombre d'epoques reellement executees (w_history len): {num_epochs_run}")
-
-    
+        
     train_accuracies = []
     val_accuracies = []
 

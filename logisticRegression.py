@@ -71,7 +71,7 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
 
         #Early stopping
         if X_val is not None and y_val is not None:
-            val_cost = cost_function(X_val, y_val, w, b, extra_weight=1)
+            val_cost = cost_function(X_val, y_val, w, b)
             val_cost_list.append(val_cost)
 
             if val_cost < best_val_loss - min_delta:
@@ -186,21 +186,29 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, threshold=0.5, **kwargs):
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, **kwargs):
     best_lambda = None
     best_f1 = 0
+    best_thresh = 0.5
 
     for lam in lambdas:
         w, b = logistic_regression(X_train, y_train, X_val, y_val,  l2_reg=True, lambda_const=lam, to_print=False, extra_weight=extra_weight, **kwargs)
-        y_val_pred = predict(X_val, w, b, t=threshold)
-        f1 = f1_score(y_val, y_val_pred)
+        t_opt, f1_opt = f1_score_threshold(
+            X_val, y_val, w, b,
+            step=step,
+            to_print=False
+        )
 
-        print(f"Lambda: {lam}, F1: {f1:.4f}")
+        print(f"Lambda: {lam:.6f} | Best T: {t_opt:.3f} | F1: {f1_opt:.4f}")
 
-        if f1 > best_f1:
-            best_f1 = f1
+        if f1_opt > best_f1:
+            best_f1 = f1_opt
             best_lambda = lam
-    print("Best lambda:", best_lambda)
+            best_thresh = t_opt
+
+    print("\nBest lambda:", best_lambda)
+    print(f"Best threshold: {best_thresh:.3f}")
+    print(f"Best F1: {best_f1:.4f}")
     return best_lambda, best_f1
 
 def overfitting_test(model_old, X_test, model_new, X_test_final):
