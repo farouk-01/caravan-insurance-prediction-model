@@ -44,7 +44,7 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     db = np.sum(extra_weight * (p-y)) / np.sum(extra_weight) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=100, min_delta=1e-6, iterations=1000, extra_weight=1, 
+def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=200, min_delta=1e-6, iterations=1000, extra_weight=1, 
                         to_print=True, return_costs=False, l2_reg=False, lambda_const=None, return_weight_history=False):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
@@ -71,7 +71,10 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
 
         #Early stopping
         if X_val is not None and y_val is not None:
-            val_cost = cost_function(X_val, y_val, w, b)
+            if l2_reg:
+                val_cost = cost_function_with_l2(X_val, y_val, w, b, lambda_const, extra_weight=1)
+            else:
+                val_cost = cost_function(X_val, y_val, w, b)
             val_cost_list.append(val_cost)
 
             if val_cost < best_val_loss - min_delta:
@@ -209,7 +212,7 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, st
     print("\nBest lambda:", best_lambda)
     print(f"Best threshold: {best_thresh:.3f}")
     print(f"Best F1: {best_f1:.4f}")
-    return best_lambda, best_f1
+    return best_lambda
 
 def overfitting_test(model_old, X_test, model_new, X_test_final):
     y_test_data = data.get_test_targets().to_numpy()

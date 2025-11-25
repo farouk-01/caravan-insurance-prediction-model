@@ -211,3 +211,44 @@ def epochs_grid_search(X_train, y_train, X_val, y_val, epochs_list, learning_rat
     plt.show()
 
     return val_losses, f1_scores
+
+def plot_hist_comparison( column, X_tp=None, X_fp=None, X_fn=None, X_tn=None, bins=20):
+    plt.figure(figsize=(12, 7))
+    if X_tp is not None:
+        mean_tp = X_tp[column].mean()
+        median_tp = X_tp[column].median()
+        plt.axvline(mean_tp, color='green', linestyle='dashed', linewidth=2, 
+                    label=f'Mean TP: {mean_tp:.2f}')
+        plt.axvline(median_tp, color='green', linestyle=':', linewidth=2, 
+                    label=f'Median TP: {median_tp:.2f}')
+        plt.hist(X_tp[column], bins=bins, alpha=0.5, label='True Positives', color='green')
+    if X_fp is not None:
+        mean_fp = X_fp[column].mean()
+        median_fp = X_fp[column].median()
+        plt.axvline(mean_fp, color='orange', linestyle='dashed', linewidth=2, 
+                    label=f'Mean FP: {mean_fp:.2f}')
+        plt.axvline(median_fp, color='orange', linestyle=':', linewidth=2, 
+                    label=f'Median FP: {median_fp:.2f}')
+        plt.hist(X_fp[column], bins=bins, alpha=0.5, label='False Positives', color='orange')
+    if X_tn is not None:
+        mean_tn = X_tn[column].mean()
+        median_tn = X_tn[column].median()
+        plt.axvline(mean_tn, color='blue', linestyle='dashed', linewidth=2, 
+                    label=f'Mean TN: {mean_tn:.2f}')
+        plt.axvline(median_tn, color='blue', linestyle=':', linewidth=2, 
+                    label=f'Median TN: {median_tn:.2f}')
+        plt.hist(X_tn[column], bins=bins, alpha=0.5, label='True Negatives', color='blue')
+    if X_fn is not None:
+        mean_fn = X_fn[column].mean()
+        median_fn = X_fn[column].median()
+        plt.axvline(mean_fn, color='red', linestyle='dashed', linewidth=2, 
+                    label=f'Mean FN: {mean_fn:.2f}')
+        plt.axvline(median_fn, color='red', linestyle=':', linewidth=2, 
+                    label=f'Median FN: {median_fn:.2f}')
+        plt.hist(X_fn[column], bins=bins, alpha=0.5, label='False Negatives', color='red')
+
+    plt.xlabel(column)
+    plt.title(f'Histogram pour {column}')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
