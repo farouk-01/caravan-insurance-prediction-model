@@ -29,13 +29,13 @@ class Model:
     def copy(self):
         return copy.deepcopy(self)
 
-# def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, extra_weight=1, improvement="", threshold_method=None, l2_reg=False, lambda_const=None, to_print=False, score_f1 = None):
-#     w, b = logisticRegression.logistic_regression(X_train, y_train, learning_rate=learning_rate, extra_weight=extra_weight, l2_reg=l2_reg, lambda_const=lambda_const, to_print=to_print)
-#     if threshold_method == "F1":
-#         threshold, score_f1 = logisticRegression.f1_score_test(X_val, y_val, w, b)
-#     elif threshold_method == "Youden":
-#         threshold = logisticRegression.get_youden_threshold(X_val, y_val, w, b)
-#     elif threshold_method is None:
-#         threshold = 0.5
-#     model = Model(w, b, threshold, improvement=improvement, score_f1=score_f1)
-#     return model
+def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, extra_weight=1, improvement="", threshold_method=None, l2_reg=False, lambda_const=None, to_print=False, score_f1 = None):
+    w, b = logisticRegression.logistic_regression(X_train, y_train, X_val, y_val, learning_rate=learning_rate, extra_weight=extra_weight, l2_reg=l2_reg, lambda_const=lambda_const, to_print=to_print)
+    if threshold_method == "F1":
+        threshold, score_f1 = logisticRegression.f1_score_test(X_val, y_val, w, b)
+    elif threshold_method == "Youden":
+        threshold = logisticRegression.get_youden_threshold(X_val, y_val, w, b)
+    elif threshold_method is None:
+        threshold = 0.5
+    model = Model(w, b, threshold, improvement=improvement, score_f1=score_f1)
+    return model
