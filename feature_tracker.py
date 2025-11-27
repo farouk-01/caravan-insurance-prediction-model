@@ -117,7 +117,7 @@ class FeatureTracker:
             self.features = pd.concat([self.features, pd.DataFrame(new_cols, index=self.features.index)], axis=1)
             self.inter_terms.extend(new_cols.keys())
 
-    def flush_to_df(self, X_other=None, notToRemove=[], returnDf=True):
+    def flush_to_df(self, X_other=None, notToRemove=[], returnDf=True, removeTargets=False):
         notHisFeature = []
         notInDfAlready = self.isNotInDfList()
 
@@ -140,6 +140,7 @@ class FeatureTracker:
                     X.drop(r, axis=1, inplace=True)
         self.df = X.copy()
         if returnDf: 
+            if removeTargets: X.drop('CARAVAN', axis=1, inplace=True)
             return X
         
     def test_current(self, learning_rate=0.01, epochs=1000, class_weight=13, returnModel=True):
