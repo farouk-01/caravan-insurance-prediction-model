@@ -6,8 +6,6 @@ class Model:
         self.w = w
         self.b = b
         self.threshold = threshold
-        self.score_f1 = score_f1
-        self.score_auc = score_auc
         self.improvement = improvement
     
     def __repr__(self):
@@ -24,15 +22,15 @@ class Model:
             t = self.threshold
         else:
             t = threshold
-        logisticRegression.print_model_stats(X, y, self.w, self.b, t, self.score_f1)
+        logisticRegression.print_model_stats(X, y, self.w, self.b, t)
 
     def copy(self):
         return copy.deepcopy(self)
 
-def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, extra_weight=1, improvement="", threshold_method=None, l2_reg=False, lambda_const=None, to_print=False, score_f1 = None):
-    w, b = logisticRegression.logistic_regression(X_train, y_train, X_val, y_val, learning_rate=learning_rate, extra_weight=extra_weight, l2_reg=l2_reg, lambda_const=lambda_const, to_print=to_print)
+def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=1000, extra_weight=1, improvement="", threshold_method=None, l2_reg=False, lambda_const=None, to_print=False, score_f1 = None):
+    w, b = logisticRegression.logistic_regression(X_train, y_train, X_val, y_val, learning_rate=learning_rate, iterations=iterations, extra_weight=extra_weight, l2_reg=l2_reg, lambda_const=lambda_const, to_print=to_print)
     if threshold_method == "F1":
-        threshold, score_f1 = logisticRegression.f1_score_test(X_val, y_val, w, b)
+        threshold, score_f1 = logisticRegression.f1_score_threshold(X_val, y_val, w, b)
     elif threshold_method == "Youden":
         threshold = logisticRegression.get_youden_threshold(X_val, y_val, w, b)
     elif threshold_method is None:
