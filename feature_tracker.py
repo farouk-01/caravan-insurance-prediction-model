@@ -54,7 +54,7 @@ class FeatureTracker:
                 s.replace([np.inf, -np.inf], 0, inplace=True)
             self.features[name] = s.copy()
             if toScale: self.varsToScale.append(name)
-    
+
     def remove(self, name):
         if name not in self.toRemoveList:
             if name in self.features.columns: 
@@ -63,7 +63,12 @@ class FeatureTracker:
             elif name in self.df.columns:
                 self.removed_features[name] = self.df[name].copy()
                 self.toRemoveList.append(name)
-        if name in self.varsToScale: self.varsToScale.remove(name)
+    
+    def remove_list(self, cols):
+        for c in cols:
+            self.remove(c)
+
+        #if name in self.varsToScale: self.varsToScale.remove(name)
     
     def restore(self, name, isToScale=False):
         if name in self.removed_features:
@@ -131,21 +136,37 @@ class FeatureTracker:
             print("every feature is in the DF already")
         if len(self.toRemoveList) != 0:
             for r in self.toRemoveList:
-                if r in X.columns and r not in notToRemove: X.drop(r, axis=1, inplace=True)
+                if r in X.columns and r not in notToRemove: 
+                    X.drop(r, axis=1, inplace=True)
         self.df = X.copy()
         if returnDf: 
             return X
+        
+    def test_current(self, learning_rate=0.01, epochs=1000, class_weight=13, returnModel=True):
+        X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(toNpy=True)
+        model = Model.create_model(
+            X_train_np, y_train_np, X_val_np, y_val_np, 
+            learning_rate=learning_rate, extra_weight=class_weight,
+            iterations=epochs, threshold_method='F1'
+        )
+        model.print_stats(X_val_np, y_val_np)
+        if returnModel: return model
     
     def feature_comparator(self, X, baseExtraCols, colsToTest, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=13):
         featureTester = FeatureTracker(X)
+        colsToRemove = list(self.toRemoveList)
+
         for c in baseExtraCols:
             colToAdd, isToScale = self.getFeature(c)
+            if c in colsToRemove: colsToRemove.remove(c)
             featureTester.add(c, colToAdd, toScale=isToScale)
+        featureTester.toRemoveList = colsToRemove
 
         X = featureTester.flush_to_df()
 
         X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
         print(f'----- Test sans variable to test -----')
+        #print(len(X.columns))
 
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
@@ -157,6 +178,9 @@ class FeatureTracker:
         print()            
 
         for c in colsToTest: 
+            if c in colsToRemove: 
+                colsToRemove.remove(c)
+                featureTester.toRemoveList = colsToRemove
             colToAdd, isToScale = self.getFeature(c)
             featureTester.add(c, colToAdd, toScale=isToScale)
             X = featureTester.flush_to_df()
@@ -164,6 +188,7 @@ class FeatureTracker:
             X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
             
             print(f'----- Test de la variable {c} -----')
+            #print(len(X.columns))
             
             model = Model.create_model(
                 X_train_np, y_train_np, X_val_np, y_val_np, 
@@ -184,6 +209,7 @@ class FeatureTracker:
             X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
 
             print(f'-------------------- Test avec interactions terms --------------------')
+            #print(len(X.columns))
             model = Model.create_model(
                 X_train_np, y_train_np, X_val_np, y_val_np, 
                 learning_rate=learning_rate, extra_weight=class_weight,
@@ -201,6 +227,7 @@ class FeatureTracker:
                 X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
                 
                 print(f'----- Test de la variable {c} -----')
+                #print(len(X.columns))
                 
                 model = Model.create_model(
                     X_train_np, y_train_np, X_val_np, y_val_np, 
