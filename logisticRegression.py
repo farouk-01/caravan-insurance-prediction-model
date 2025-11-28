@@ -157,12 +157,14 @@ def print_model_stats(X, y, w, b, threshold=0.5):
     y_pred = predict(X,w,b, threshold)
     f1 = f1_score(y, y_pred)
     precision = precision_score(y, y_pred, zero_division=0)
+    recall = recall_score(y, y_pred, zero_division=0)
 
     
     auc = roc_auc_score(y, y_probas)
     #print('Accuracy: ', accuracy)
     print(f'AUC         : {auc:.4f}')
     print(f'Precision   : {precision:.4f}')
+    print(f'Recall      : {recall:.4f}' )
     print(f'F1          : {f1:.4f}')
     print(f'Threshold   : {threshold:.4f}')
     print(conf_matrix)

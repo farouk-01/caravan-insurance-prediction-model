@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+import logisticRegression
 
 
 def make_mi_scores(X, y, discrete_features):
@@ -63,4 +64,11 @@ def find_correlated_cols(df, threshold=0.95, toPlot=True):
             if corr_value > threshold:
                 strong_pairs.append((row, col))
     return strong_pairs
+
+def fisher_info(X, w, b):
+    z = X @ w + b
+    p = logisticRegression.sigmoid(z)
+    W = np.diag(p * (1-p))
+    fi = X.T @ W @ X
+    return fi
 

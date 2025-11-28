@@ -55,13 +55,13 @@ class FeatureTracker:
             self.features[name] = s.copy()
             if toScale: self.varsToScale.append(name)
 
-    def remove(self, name):
+    def remove(self, name, save=True):
         if name not in self.toRemoveList:
             if name in self.features.columns: 
-                self.removed_features[name] = self.features[name].copy()
+                if save: self.removed_features[name] = self.features[name].copy()
                 self.toRemoveList.append(name)
             elif name in self.df.columns:
-                self.removed_features[name] = self.df[name].copy()
+                if save: self.removed_features[name] = self.df[name].copy()
                 self.toRemoveList.append(name)
     
     def remove_list(self, cols):
@@ -132,8 +132,8 @@ class FeatureTracker:
         if notInDfAlready:
             X = pd.concat([X, self.features[notInDfAlready]], axis=1)
             self.features = self.features.copy()
-        else:
-            print("every feature is in the DF already")
+        # else:
+        #     print("every feature is in DF already")
         if len(self.toRemoveList) != 0:
             for r in self.toRemoveList:
                 if r in X.columns and r not in notToRemove: 
