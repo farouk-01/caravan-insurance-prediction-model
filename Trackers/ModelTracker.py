@@ -15,7 +15,7 @@ class ModelTracker:
             for r in self.results:
                 if r['model'] == name:
                     r.update({
-                        'F1': model_obj.score_f1,
+                        #'F1': model_obj.score_f1,
                         'threshold': model_obj.threshold,
                         'improvement': model_obj.improvement
                     })
@@ -24,7 +24,7 @@ class ModelTracker:
             self.models[name] = model_obj
             self.results.append({
                 'model': name,
-                'F1': model_obj.score_f1,
+                #'F1': model_obj.score_f1,
                 'threshold': model_obj.threshold,
                 'improvement': model_obj.improvement
             })

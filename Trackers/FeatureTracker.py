@@ -9,8 +9,8 @@ class FeatureTracker:
     def __init__(self, df):
         self.features = pd.DataFrame()
         self.removed_features = pd.DataFrame()
-        self.varsToScale = []
-        self.toRemoveList = []
+        self.cols_to_scale = []
+        self.to_remove_cols = []
         self.df = df
         self.inter_terms = []
     
@@ -23,23 +23,26 @@ class FeatureTracker:
     def getFeature(self, name):
         if name in self.features.columns: 
             isToScale = False
-            for v in self.varsToScale: 
+            for v in self.cols_to_scale: 
                 if v == name: 
                     isToScale = True
                     break
             return self.features[name].copy(), isToScale
-        elif name in self.toRemoveList:
+        elif name in self.to_remove_cols:
             isToScale = False
-            for v in self.varsToScale: 
+            for v in self.cols_to_scale: 
                 if v == name: 
                     isToScale = True
                     break
             return self.removed_features[name].copy(), isToScale
-
-
-    def getVarsToScale(self):
-        return self.varsToScale
     
+    def get_cols_to_scale(self):
+        return self.cols_to_scale
+    
+    def get_features_cols(self, with_inter_terms=False):
+        if with_inter_terms: return self.features.columns 
+        else: return list(set(self.features.columns) - set(self.inter_terms))
+
     def isNotInDfList(self):
         colInDf = self.df.columns.values
         colInFeatures = self.features.columns.values
@@ -53,17 +56,18 @@ class FeatureTracker:
             if np.isinf(s).any():
                 s.replace([np.inf, -np.inf], 0, inplace=True)
             self.features[name] = s.copy()
-            if toScale: self.varsToScale.append(name)
+            if toScale: self.cols_to_scale.append(name)
+        if name in self.to_remove_cols:
+            self.to_remove_cols.remove(name)
 
     def remove(self, name, save=True):
-        if name not in self.toRemoveList:
-            if name in self.features.columns: 
-                if save: self.removed_features[name] = self.features[name].copy()
-                self.toRemoveList.append(name)
-            elif name in self.df.columns:
-                if save: self.removed_features[name] = self.df[name].copy()
-                self.toRemoveList.append(name)
-    
+        if name not in self.to_remove_cols:
+            self.to_remove_cols.append(name)
+        if name in self.features.columns: 
+            if save: self.removed_features[name] = self.features[name].copy()
+        elif name in self.df.columns:
+            if save: self.removed_features[name] = self.df[name].copy()
+            
     def remove_list(self, cols):
         for c in cols:
             self.remove(c)
@@ -73,8 +77,8 @@ class FeatureTracker:
     def restore(self, name, isToScale=False):
         if name in self.removed_features:
             self.features[name] = self.removed_features.pop(name)
-            self.toRemoveList.remove(name)
-            if isToScale and name not in self.varsToScale: self.varsToScale.append(name)
+            self.to_remove_cols.remove(name)
+            if isToScale and name not in self.cols_to_scale: self.cols_to_scale.append(name)
 
     def return_split_train_eval(self, X_other=None, toNpy=False, notToRemove=[]):
         if X_other is not None: X = self.flush_to_df(X_other=X_other, notToRemove=notToRemove)
@@ -82,7 +86,7 @@ class FeatureTracker:
         X_train, X_val, y_train, y_val = data.get_split_train_eval_data(X)
 
         X_train_cols = X_train.columns
-        for var in self.varsToScale:
+        for var in self.cols_to_scale:
             scaler = StandardScaler()
             if var in X_train_cols:
                 scaler.fit(X_train[[var]])
@@ -134,10 +138,12 @@ class FeatureTracker:
             self.features = self.features.copy()
         # else:
         #     print("every feature is in DF already")
-        if len(self.toRemoveList) != 0:
-            for r in self.toRemoveList:
+        if len(self.to_remove_cols) != 0:
+            for r in self.to_remove_cols:
                 if r in X.columns and r not in notToRemove: 
                     X.drop(r, axis=1, inplace=True)
+                if r in self.features.columns:
+                    self.features.drop(r, axis=1, inplace=True)
         self.df = X.copy()
         if returnDf: 
             if removeTargets: X.drop('CARAVAN', axis=1, inplace=True)
@@ -153,20 +159,21 @@ class FeatureTracker:
         model.print_stats(X_val_np, y_val_np)
         if returnModel: return model
     
-    def feature_comparator(self, X, baseExtraCols, colsToTest, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=13):
+    def feature_comparator(self, X, baseExtraCols, colsToTest=None, cols_to_remove=None, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=13):
         featureTester = FeatureTracker(X)
-        colsToRemove = list(self.toRemoveList)
+        if cols_to_remove is None: cols_to_remove = list(self.to_remove_cols)
 
         for c in baseExtraCols:
             colToAdd, isToScale = self.getFeature(c)
-            if c in colsToRemove: colsToRemove.remove(c)
+            if c in cols_to_remove: cols_to_remove.remove(c)
             featureTester.add(c, colToAdd, toScale=isToScale)
-        featureTester.toRemoveList = colsToRemove
+        featureTester.to_remove_cols = cols_to_remove
 
         X = featureTester.flush_to_df()
+        #print(featureTester.get_features_cols())
 
         X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
-        print(f'----- Test sans variable to test -----')
+        print(f'--------------------| Test avec les variables de base |--------------------')
         #print(len(X.columns))
 
         model = Model.create_model(
@@ -178,56 +185,18 @@ class FeatureTracker:
         model.print_stats(X_val_np, y_val_np)
         print()            
 
-        for c in colsToTest: 
-            if c in colsToRemove: 
-                colsToRemove.remove(c)
-                featureTester.toRemoveList = colsToRemove
-            colToAdd, isToScale = self.getFeature(c)
-            featureTester.add(c, colToAdd, toScale=isToScale)
-            X = featureTester.flush_to_df()
-
-            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
-            
-            print(f'----- Test de la variable {c} -----')
-            #print(len(X.columns))
-            
-            model = Model.create_model(
-                X_train_np, y_train_np, X_val_np, y_val_np, 
-                learning_rate=learning_rate, extra_weight=class_weight,
-                iterations=epochs, threshold_method='F1'
-            )
-
-            model.print_stats(X_val_np, y_val_np)
-            print()
-            featureTester.remove(c)
-
-        if add_inter_terms: 
-            for c in self.inter_terms:
+        if colsToTest is not None:
+            for c in colsToTest: 
+                if c in cols_to_remove: 
+                    cols_to_remove.remove(c)
+                    featureTester.to_remove_cols = cols_to_remove
                 colToAdd, isToScale = self.getFeature(c)
                 featureTester.add(c, colToAdd, toScale=isToScale)
-            X = featureTester.flush_to_df()
-
-            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
-
-            print(f'-------------------- Test avec interactions terms --------------------')
-            #print(len(X.columns))
-            model = Model.create_model(
-                X_train_np, y_train_np, X_val_np, y_val_np, 
-                learning_rate=learning_rate, extra_weight=class_weight,
-                iterations=epochs, threshold_method='F1'
-            )
-
-            model.print_stats(X_val_np, y_val_np)
-            print()
-
-            for c in colsToTest: 
-                colToAdd, isToScale = self.getFeature(c)
-                featureTester.restore(c, isToScale=isToScale)
                 X = featureTester.flush_to_df()
 
                 X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
                 
-                print(f'----- Test de la variable {c} -----')
+                print(f'----- Test avec la variable {c} -----')
                 #print(len(X.columns))
                 
                 model = Model.create_model(
@@ -239,6 +208,46 @@ class FeatureTracker:
                 model.print_stats(X_val_np, y_val_np)
                 print()
                 featureTester.remove(c)
+
+        if add_inter_terms: 
+            for c in self.inter_terms:
+                colToAdd, isToScale = self.getFeature(c)
+                featureTester.add(c, colToAdd, toScale=isToScale)
+            X = featureTester.flush_to_df()
+
+            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+
+            print(f'--------------------| Test avec interactions terms |--------------------')
+            #print(len(X.columns))
+            model = Model.create_model(
+                X_train_np, y_train_np, X_val_np, y_val_np, 
+                learning_rate=learning_rate, extra_weight=class_weight,
+                iterations=epochs, threshold_method='F1'
+            )
+
+            model.print_stats(X_val_np, y_val_np)
+            print()
+            
+            if colsToTest is not None:
+                for c in colsToTest: 
+                    colToAdd, isToScale = self.getFeature(c)
+                    featureTester.restore(c, isToScale=isToScale)
+                    X = featureTester.flush_to_df()
+
+                    X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+                    
+                    print(f'----- Test de la variable {c} -----')
+                    #print(len(X.columns))
+                    
+                    model = Model.create_model(
+                        X_train_np, y_train_np, X_val_np, y_val_np, 
+                        learning_rate=learning_rate, extra_weight=class_weight,
+                        iterations=epochs, threshold_method='F1'
+                    )
+
+                    model.print_stats(X_val_np, y_val_np)
+                    print()
+                    featureTester.remove(c)
 
 #  def add(self, name, values, tag=None):
 #         """Add a new variable or interaction with optional tag"""
