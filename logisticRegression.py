@@ -45,7 +45,7 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     return dw, db
 
 def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=200, min_delta=1e-6, iterations=1000, extra_weight=1, 
-                        to_print=True, return_costs=False, l2_reg=False, lambda_const=None, return_weight_history=False):
+                        to_print=True, return_costs=False, l2_reg=False, l1_reg=False, lambda_const=None, return_weight_history=False):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
     
@@ -106,6 +106,9 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
 
         if l2_reg:
             dw += (lambda_const / m) * w
+        
+        if l1_reg:
+            dw += (lambda_const/m) * np.sign(w)
 
         w -= learning_rate*dw
         b -= learning_rate*db
