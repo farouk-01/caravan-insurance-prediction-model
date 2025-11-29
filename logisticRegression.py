@@ -118,6 +118,7 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
         if to_print and i % 100 == 0:
             val_info = f' | Val cos =  {val_cost:.4f}' if X_val is not None and y_val is not None else ''
             print(f"Iteration {i}: Train cost = {train_cost:.4f}{val_info}")
+            #print("Zero weight:", np.sum(np.isclose(w, 0)))
         train_cost_list.append(train_cost)
     
     if X_val is not None and y_val is not None:
@@ -197,13 +198,15 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, **kwargs):
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, l1_reg=False, to_print=False, **kwargs):
     best_lambda = None
     best_f1 = 0
     best_thresh = 0.5
 
+    l2_reg = not l1_reg
+
     for lam in lambdas:
-        w, b = logistic_regression(X_train, y_train, X_val, y_val,  l2_reg=True, lambda_const=lam, to_print=False, extra_weight=extra_weight, **kwargs)
+        w, b = logistic_regression(X_train, y_train, X_val, y_val, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lam, to_print=to_print, extra_weight=extra_weight, **kwargs)
         t_opt, f1_opt = f1_score_threshold(
             X_val, y_val, w, b,
             step=step,

@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+import scipy.stats as st
 import logisticRegression
-
+import data
 
 def make_mi_scores(X, y, discrete_features):
     #Beware not to use a regression scoring function with a classification problem, you will get useless results.
@@ -51,7 +52,7 @@ def find_correlated_cols(df, threshold=0.95, toPlot=True):
     corr_matrix = numeric_df.corr().abs()
 
     if toPlot:
-        plt.figure(figsize=(12,10))
+        #plt.figure(figsize=(10,8))
         sns.heatmap(corr_matrix, cmap='coolwarm', annot=False, cbar=True)
         plt.title("Matrice de correlation")
         plt.show()
@@ -157,3 +158,37 @@ def get_constant_and_rare_cols(coef_df, X_train, y_train, huge=1e10):
             print('what?', c)
     return cols_with_zeros_targets, cols_with_all_targets, cols_with_rare_outcomes
 
+def or_with_ic(model, X_train, cols):
+    coeff = model.w 
+    bias = model.b 
+    odds_ratio = np.exp(coeff) 
+    confiance = 0.95
+
+    #X_train_np, X_val_np, y_train_np, y_val_np = data.get_split_train_eval_data(X, toNpy=True)
+
+    fi = fisher_info(X_train, coeff, bias)
+    cov_matrix = np.linalg.inv(fi)
+    std = np.sqrt(np.diag(cov_matrix))
+
+    surface = 1 - (1-confiance)/2
+    z = st.norm.ppf(surface)
+
+    bi = coeff - z * std
+    bs = coeff + z * std
+
+    bi_or = np.exp(bi)
+    bs_or = np.exp(bs)
+        
+    coef_df = pd.DataFrame({
+        'feature': cols,
+        '$\\beta_n$': coeff,
+        '$OR$': odds_ratio,
+        '$bi_{OR}$': bi_or,
+        '$bs_{OR}$': bs_or
+    })
+
+    coef_df = coef_df.round(4)
+
+    mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
+    print(coef_df[mask_signif].to_markdown())
+    #print(coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())

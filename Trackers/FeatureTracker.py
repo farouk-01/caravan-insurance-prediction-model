@@ -161,12 +161,13 @@ class FeatureTracker:
         state_tracker.flush_to_df(returnDf=False)
         return state_tracker
 
-    def test_current(self, learning_rate=0.01, epochs=1000, class_weight=13, returnModel=True):
+    def test_current(self, learning_rate=0.01, epochs=1000, class_weight=13, returnModel=True, **kwargs):
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(toNpy=True)
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
             learning_rate=learning_rate, extra_weight=class_weight,
-            iterations=epochs, threshold_method='F1'
+            iterations=epochs, threshold_method='F1',
+            **kwargs
         )
         model.print_stats(X_val_np, y_val_np)
         if returnModel: return model
