@@ -79,6 +79,9 @@ class FeatureTracker:
             self.features[name] = self.removed_features.pop(name)
             self.to_remove_cols.remove(name)
             if isToScale and name not in self.cols_to_scale: self.cols_to_scale.append(name)
+    
+    def restore_list(self, cols):
+        for c in cols: self.restore(c)
 
     def return_split_train_eval(self, X_other=None, toNpy=False, notToRemove=[]):
         if X_other is not None: X = self.flush_to_df(X_other=X_other, notToRemove=notToRemove)
@@ -149,6 +152,15 @@ class FeatureTracker:
             if removeTargets: X.drop('CARAVAN', axis=1, inplace=True)
             return X
         
+    def save_state(self):
+        state_tracker = FeatureTracker(self.df)
+        state_tracker.cols_to_scale = self.cols_to_scale.copy()
+        state_tracker.features = self.features.copy()
+        state_tracker.to_remove_cols = self.to_remove_cols.copy()
+        state_tracker.removed_features = self.removed_features.copy()
+        state_tracker.flush_to_df(returnDf=False)
+        return state_tracker
+
     def test_current(self, learning_rate=0.01, epochs=1000, class_weight=13, returnModel=True):
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(toNpy=True)
         model = Model.create_model(
