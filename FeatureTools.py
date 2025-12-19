@@ -76,7 +76,7 @@ def fisher_info(X, w, b):
     return fi
 
 def ols(X, y):
-    w = np.linalg.inv(X.T @ X) @ (X.T @ y)
+    w = np.linalg.lstsq(X, y, rcond=None)[0]
     return w
 
 def regressionLineaire(X, y):
@@ -84,10 +84,11 @@ def regressionLineaire(X, y):
     residual = y - X @ w
     return w, residual
 
-def auxRegLin(X, eps):
+def auxRegLin(X, eps, tol=1e-12):
     var_residual = np.sum(eps**2)
     xm = np.mean(X)
     var_X = np.sum((X - xm)**2)
+    if var_X <= tol: return 0
     return (1 - var_residual/var_X)
     
 def vif(X, cols, return_coef=False):
@@ -96,12 +97,10 @@ def vif(X, cols, return_coef=False):
     for c in cols:
         X_i = X[c].to_numpy()
         X_hat_i = X.drop(c, axis=1).to_numpy()
-        w, residu = regressionLineaire(X_hat_i, X_i)
+        X_hat = np.column_stack([np.ones(len(X_i)), X_hat_i])
+        w, residu = regressionLineaire(X_hat, X_i)
         R2 = auxRegLin(X_i, residu)
-        if R2 == 1:
-            vif = 0
-        else:
-            vif = 1/(1 - R2)
+        vif = np.inf if np.isclose(1 - R2, 0) else 1 / (1 - R2)
         vif_res[c] = vif
         if return_coef:
             coef_df = pd.DataFrame({
