@@ -88,8 +88,9 @@ def auxRegLin(X, eps):
     var_X = np.sum((X - xm)**2)
     return (1 - var_residual/var_X)
     
-def vif(X, cols, print_coef=False):
+def vif(X, cols, return_coef=False):
     vif_res = {}
+    all_coef_dfs = []
     for c in cols:
         X_i = X[c].to_numpy()
         X_hat_i = X.drop(c, axis=1).to_numpy()
@@ -100,10 +101,18 @@ def vif(X, cols, print_coef=False):
         else:
             vif = 1/(1 - R2)
         vif_res[c] = vif
-        if print_coef:
-            coef_df = pd.DataFrame({c: X.drop(c, axis=1).columns, 'coef': w})
-            print(coef_df.sort_values(by='coef', key=abs, ascending=False).head(10).to_markdown())
-            print()
+        if return_coef:
+            coef_df = pd.DataFrame({
+                'Target': c,
+                'Variable': X.drop(c, axis=1).columns,
+                'coef': w
+            })
+            all_coef_dfs.append(coef_df)
+            # print(coef_df.sort_values(by='coef', key=abs, ascending=False).head(10).to_markdown())
+            # print()
+    if return_coef:
+        coef_df = pd.concat(all_coef_dfs, ignore_index=True)
+        return coef_df
     return pd.DataFrame.from_dict(vif_res, orient='index', columns=['VIF']).sort_values(by='VIF', ascending=False)
 
 def get_negative_variance_info(fi, X_cols, huge=1e10):
@@ -158,7 +167,7 @@ def get_constant_and_rare_cols(coef_df, X_train, y_train, huge=1e10):
             print('what?', c)
     return cols_with_zeros_targets, cols_with_all_targets, cols_with_rare_outcomes
 
-def or_with_ic(model, X_train, cols):
+def or_with_ic(model, X_train, cols, printFull=False):
     coeff = model.w 
     bias = model.b 
     odds_ratio = np.exp(coeff) 
@@ -191,4 +200,4 @@ def or_with_ic(model, X_train, cols):
 
     mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
     print(coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
-    #print(coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
+    if printFull: print(coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
