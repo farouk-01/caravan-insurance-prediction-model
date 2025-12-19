@@ -2,6 +2,8 @@ from sklearn.feature_selection import mutual_info_classif, mutual_info_regressio
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -202,3 +204,76 @@ def or_with_ic(model, X_train, cols, printFull=False):
     if printFull: return (coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
     return (coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
     
+
+def split_val_results(X_val, y_val, w, b, threshold):
+    X_val_np = X_val.to_numpy()
+    y_pred = logisticRegression.predict(X_val_np, w, b, threshold)
+
+    tp_indices = np.where((y_val == 1) & (y_pred == 1))[0]
+    fp_indices = np.where((y_val == 0) & (y_pred == 1))[0]
+    tn_indices = np.where((y_val == 0) & (y_pred == 0))[0]
+    fn_indices = np.where((y_val == 1) & (y_pred == 0))[0]
+    X_tp = X_val_np[tp_indices]
+    X_fp = X_val_np[fp_indices]
+    X_tn = X_val_np[tn_indices]
+    X_fn = X_val_np[fn_indices]
+    X_tp_df = pd.DataFrame(data=X_tp, columns=X_val.columns)
+    X_fp_df = pd.DataFrame(data=X_fp, columns=X_val.columns)
+    X_tn_df = pd.DataFrame(data=X_tn, columns=X_val.columns)
+    X_fn_df = pd.DataFrame(data=X_fn, columns=X_val.columns)
+
+    return X_tp_df, X_fp_df, X_tn_df, X_fn_df
+
+def get_df_val_analysis(X_val, y_val, w, b, threshold, raw=False, quantile=None):
+    X_tp_df, X_fp_df, X_tn_df, X_fn_df = split_val_results(X_val, y_val, w, b, threshold)
+    
+    if raw:
+        tp = X_tp_df.copy(); tp["Group"] = "TP"
+        fp = X_fp_df.copy(); fp["Group"] = "FP"
+        tn = X_tn_df.copy(); tn["Group"] = "TN"
+        fn = X_fn_df.copy(); fn["Group"] = "FN"
+
+        df_profiles = pd.concat([tn, fp, fn, tp], axis=0, ignore_index=True)
+        return df_profiles
+    elif quantile is None:
+        profile_tp = X_tp_df.mean()
+        profile_fp = X_fp_df.mean()
+        profile_tn = X_tn_df.mean()
+        profile_fn = X_fn_df.mean()
+    else:
+        profile_tp = X_tp_df.quantile(quantile)
+        profile_fp = X_fp_df.quantile(quantile)
+        profile_tn = X_tn_df.quantile(quantile)
+        profile_fn = X_fn_df.quantile(quantile)
+
+    #var_to_check = ['total_contribution', 'MHKOOP', 'diff_educ_mid_bas', 'MRELSA', 'MFGEKIND' ,'MFWEKIND', 'MGODGE', 'MRELGE', 'MRELOV', 'MGODPR'] 
+    #var_to_check = ['total_contribution', 'MHKOOP', 'diff_educ_mid_bas', 'MRELSA', 'MFGEKIND' ,'MFWEKIND', 'MGODGE', 'MRELGE', 'MRELOV', 'MGODPR', 'MGODRK'] 
+
+    df_profiles = pd.DataFrame({
+        'TN': profile_tn,
+        'FP': profile_fp,
+        'FN': profile_fn,
+        'TP': profile_tp
+    })
+    df_profiles.index.name = 'Variable'
+    return df_profiles
+
+def print_df_analysis_html(df):
+    def colorize_row(row):
+        row_min = row.min()
+        row_max = row.max()
+        norm = mcolors.Normalize(vmin=row_min, vmax=row_max)
+        cmap = cm.get_cmap("YlOrRd")
+        
+        return [f'background-color: rgba({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)}, {rgba[3]:.2f}); color: black;'
+                for val in row for rgba in [cmap(norm(val))]]
+
+    # Apply row-wise coloring
+    styler = df.style.apply(colorize_row, axis=1)
+    styler.set_table_attributes('style="border-collapse:collapse; width:60%;"')
+
+    # Display HTML
+    html = styler.format("{:.2f}").to_html()
+    return html
+    #print(html)
+
