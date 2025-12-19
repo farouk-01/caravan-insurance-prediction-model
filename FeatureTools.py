@@ -104,8 +104,8 @@ def vif(X, cols, return_coef=False):
         vif_res[c] = vif
         if return_coef:
             coef_df = pd.DataFrame({
-                'Target': c,
-                'Variable': X.drop(c, axis=1).columns,
+                'Target': [c] * len(w),
+                'Variable': ['Intercept'] + list(X.drop(c, axis=1).columns),
                 'coef': w
             })
             all_coef_dfs.append(coef_df)
