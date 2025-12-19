@@ -199,5 +199,6 @@ def or_with_ic(model, X_train, cols, printFull=False):
     coef_df = coef_df.round(4)
 
     mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
-    print(coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
-    if printFull: print(coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
+    if printFull: return (coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
+    return (coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
+    
