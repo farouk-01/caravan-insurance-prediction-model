@@ -83,18 +83,19 @@ class FeatureTracker:
     def restore_list(self, cols):
         for c in cols: self.restore(c)
 
-    def return_split_train_eval(self, X_other=None, toNpy=False, notToRemove=[]):
+    def return_split_train_eval(self, X_other=None, toNpy=False, notToRemove=[], to_scale=True):
         if X_other is not None: X = self.flush_to_df(X_other=X_other, notToRemove=notToRemove)
         else: X = self.df
         X_train, X_val, y_train, y_val = data.get_split_train_eval_data(X)
 
         X_train_cols = X_train.columns
-        for var in self.cols_to_scale:
-            scaler = StandardScaler()
-            if var in X_train_cols:
-                scaler.fit(X_train[[var]])
-                X_train[[var]] = scaler.transform(X_train[[var]])
-                X_val[[var]] = scaler.transform(X_val[[var]])
+        if to_scale:
+            for var in self.cols_to_scale:
+                scaler = StandardScaler()
+                if var in X_train_cols:
+                    scaler.fit(X_train[[var]])
+                    X_train[[var]] = scaler.transform(X_train[[var]])
+                    X_val[[var]] = scaler.transform(X_val[[var]])
         
         if toNpy:
             X_train = X_train.to_numpy()

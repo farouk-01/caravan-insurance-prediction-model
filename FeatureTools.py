@@ -289,5 +289,5 @@ def get_target_count_of_variables(X, y, vars, markdown=True):
     }
     df = pd.concat(dfs, axis=1).fillna(0).astype(int)
 
-    if markdown: return df.to_markdown()
+    if markdown: return df.sort_index().to_markdown()
     return df
