@@ -174,14 +174,15 @@ class FeatureTracker:
         if print_stats: model.print_stats(X_val_np, y_val_np)
         if returnModel: return model
     
-    def feature_comparator(self, X, baseExtraCols, colsToTest=None, cols_to_remove=None, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=1):
+    def feature_comparator(self, X, baseExtraCols, colsToTest=None, cols_to_remove=None, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=1, **kwargs):
         featureTester = FeatureTracker(X)
         if cols_to_remove is None: cols_to_remove = list(self.to_remove_cols)
 
-        for c in baseExtraCols:
-            colToAdd, isToScale = self.getFeature(c)
-            if c in cols_to_remove: cols_to_remove.remove(c)
-            featureTester.add(c, colToAdd, toScale=isToScale)
+        if baseExtraCols is not None:
+            for c in baseExtraCols:
+                colToAdd, isToScale = self.getFeature(c)
+                if c in cols_to_remove: cols_to_remove.remove(c)
+                featureTester.add(c, colToAdd, toScale=isToScale)
         featureTester.to_remove_cols = cols_to_remove
 
         X = featureTester.flush_to_df()
@@ -194,7 +195,7 @@ class FeatureTracker:
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
             learning_rate=learning_rate, extra_weight=class_weight,
-            iterations=epochs, threshold_method='F1'
+            iterations=epochs, threshold_method='F1', **kwargs
         )
 
         model.print_stats(X_val_np, y_val_np)
@@ -204,7 +205,6 @@ class FeatureTracker:
             for c in colsToTest: 
                 if c in cols_to_remove: 
                     cols_to_remove.remove(c)
-                    featureTester.to_remove_cols = cols_to_remove
                 colToAdd, isToScale = self.getFeature(c)
                 featureTester.add(c, colToAdd, toScale=isToScale)
                 X = featureTester.flush_to_df()
@@ -217,7 +217,7 @@ class FeatureTracker:
                 model = Model.create_model(
                     X_train_np, y_train_np, X_val_np, y_val_np, 
                     learning_rate=learning_rate, extra_weight=class_weight,
-                    iterations=epochs, threshold_method='F1'
+                    iterations=epochs, threshold_method='F1', **kwargs
                 )
 
                 model.print_stats(X_val_np, y_val_np)
