@@ -116,6 +116,12 @@ def vif(X, cols, return_coef=False):
         return coef_df
     return pd.DataFrame.from_dict(vif_res, orient='index', columns=['VIF']).sort_values(by='VIF', ascending=False)
 
+def get_vif_coef(X_train, target, to_markdown=True):
+    cols = X_train.columns
+    df_vif = vif(X_train, cols, return_coef=True)
+    if to_markdown: return df_vif[df_vif['Target'] == target].sort_values(by='coef', key=abs, ascending=False).head().to_markdown()
+    return df_vif[df_vif['Target'] == target].sort_values(by='coef', key=abs, ascending=False).head()
+
 def get_negative_variance_info(fi, X_cols, huge=1e10):
     cov_matrix = np.linalg.inv(fi)
     #std = np.sqrt(np.diag(cov_matrix))
@@ -276,3 +282,12 @@ def print_df_analysis_html(df):
     return html
     #print(html)
 
+def get_target_count_of_variables(X, y, vars, markdown=True):
+    dfs = {
+        f"{v} (CARAVAN=1)": X.loc[y == 1, v].value_counts()
+        for v in vars
+    }
+    df = pd.concat(dfs, axis=1).fillna(0).astype(int)
+
+    if markdown: return df.to_markdown()
+    return df

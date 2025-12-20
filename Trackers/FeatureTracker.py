@@ -161,7 +161,7 @@ class FeatureTracker:
         state_tracker.flush_to_df(returnDf=False)
         return state_tracker
 
-    def test_current(self, learning_rate=0.01, epochs=1000, class_weight=1, set_threshold_to=0.1, returnModel=True, **kwargs):
+    def get_trained_model(self, learning_rate=0.01, epochs=1000, class_weight=1, set_threshold_to=0.1, print_stats=True, returnModel=True, **kwargs):
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(toNpy=True)
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
@@ -170,7 +170,7 @@ class FeatureTracker:
             set_threshold_to=set_threshold_to,
             **kwargs
         )
-        model.print_stats(X_val_np, y_val_np)
+        if print_stats: model.print_stats(X_val_np, y_val_np)
         if returnModel: return model
     
     def feature_comparator(self, X, baseExtraCols, colsToTest=None, cols_to_remove=None, add_inter_terms=True, learning_rate=0.01, epochs=1000, class_weight=1):
