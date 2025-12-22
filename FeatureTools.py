@@ -278,7 +278,7 @@ def get_df_conf_matrix_split(feature_tracker, model=None):
 
     return df_tn, df_fp, df_fn, df_tp
 
-def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True):
+def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True, with_total=True):
     df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
 
     if TP_FN: 
@@ -287,15 +287,15 @@ def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True
         var2 = 'FN'
         tab2 = df_fn[var].value_counts().rename('FN count')
 
-    tab = pd.concat([tab1, tab2], axis=1).astype(int).rename_axis(var).reset_index()
+    tab = pd.concat([tab1, tab2], axis=1).fillna(0).astype(int).rename_axis(var).reset_index()
 
-    total_row = pd.DataFrame([{
-        var: 'Total',
-        f'{var1} count': tab[f'{var1} count'].sum(),
-        f'{var2} count': tab[f'{var2} count'].sum()
-    }])
-    
-    tab = pd.concat([tab, total_row], ignore_index=True)
+    if with_total:
+        total_row = pd.DataFrame([{
+            var: 'Total',
+            f'{var1} count': tab[f'{var1} count'].sum(),
+            f'{var2} count': tab[f'{var2} count'].sum()
+        }])
+        tab = pd.concat([tab, total_row], ignore_index=True)
     #print(tab.to_markdown(index=False))
     return tab
 
@@ -330,6 +330,57 @@ def get_df_conf_matrix_contrib_analysis(var_filter, var_filter_value, var_name, 
                 df_filtered_2[var_name].mode().tolist()
             ]})
     return tab
+
+def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True):
+    rows = []
+
+    def _to_str(x):
+        try:
+            if pd.isna(x):
+                return ""
+            if float(x).is_integer():
+                return str(int(float(x)))
+        except Exception:
+            pass
+        return str(x)
+
+    for v in vars:
+        tab = get_df_conf_matrix_count_by_var(v, feature_tracker, with_total=True)
+
+        # | value | TP count | FN count |
+        value_col = tab.columns[0]
+        tp_col = [c for c in tab.columns if 'TP' in c][0]
+        fn_col = [c for c in tab.columns if 'FN' in c][0]
+
+        total_row = tab[tab[value_col] == "Total"]
+        if len(total_row) == 1:
+            tp_total = int(total_row[tp_col].iloc[0])
+            fn_total = int(total_row[fn_col].iloc[0])
+            tab_without_total = tab[tab.index != total_row.index[0]].copy()
+        else:
+            tab_without_total = tab.copy()
+            tp_total = int(tab_without_total[tp_col].sum())
+            fn_total = int(tab_without_total[fn_col].sum())
+    
+        dom_tp = tab_without_total[tab_without_total[tp_col] / max(tp_total, 1) >= thresh]
+        dom_fn = tab_without_total[tab_without_total[fn_col] / max(fn_total, 1) >= thresh]
+
+        tp_vals = "<br>".join(_to_str(x) for x in dom_tp[value_col].tolist()) or "-"
+        tp_cnts = "<br>".join(f"{int(c)} / {tp_total}" for c in dom_tp[tp_col].tolist()) or "-"
+
+        fn_vals = "<br>".join(_to_str(x) for x in dom_fn[value_col].tolist()) or "-"
+        fn_cnts = "<br>".join(f"{int(c)} / {fn_total}" for c in dom_fn[fn_col].tolist()) or "-"
+
+        rows.append({
+            "Variable": v,
+            "TP valeurs dominantes": tp_vals,
+            "TP (count)": tp_cnts,
+            "FN valeurs dominantes": fn_vals,
+            "FN (count)": fn_cnts,
+        })
+
+    return pd.DataFrame(rows)
+
 
 def print_df_analysis_html(df):
     def colorize_row(row):
