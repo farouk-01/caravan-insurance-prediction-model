@@ -313,6 +313,23 @@ def get_df_conf_matrix_contrib(feature_tracker, model=None):
     
     return contrib
 
+def get_df_conf_matrix_contrib_analysis(var_filter, var_filter_value, var_name, feature_tracker, model=None, TP_FN=True):
+    df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
+    contrib = get_df_conf_matrix_contrib(feature_tracker, model=model)
+    df_filtered_1 = df_tp[df_tp[var_filter] == var_filter_value].copy()
+    df_filtered_2 = df_fn[df_fn[var_filter] == var_filter_value].copy()
+    if TP_FN:
+        tab = pd.DataFrame({
+            'Group': [f'TP ({var_filter} = {var_filter_value})', f'FN ({var_filter} = {var_filter_value})'],
+            f'Contribution moyenne ({var_name})': [
+                contrib.loc[df_filtered_1.index, var_name].mean(),
+                contrib.loc[df_filtered_2.index, var_name].mean()
+            ],
+            f'Mode ({var_name})': [
+                df_filtered_1[var_name].mode().tolist(),
+                df_filtered_2[var_name].mode().tolist()
+            ]})
+    return tab
 
 def print_df_analysis_html(df):
     def colorize_row(row):
