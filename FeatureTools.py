@@ -208,29 +208,25 @@ def or_with_ic(model, X_train, cols, printFull=False):
     mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
     if printFull: return (coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
     return (coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
-    
 
-def split_val_results(X_val, y_val, w, b, threshold):
-    X_val_np = X_val.to_numpy()
-    y_pred = logisticRegression.predict(X_val_np, w, b, threshold)
+def split_model_results(X, y, w, b, threshold):
+    X_np = X.to_numpy()
+    y_pred = logisticRegression.predict(X_np, w, b, threshold)
 
-    tp_indices = np.where((y_val == 1) & (y_pred == 1))[0]
-    fp_indices = np.where((y_val == 0) & (y_pred == 1))[0]
-    tn_indices = np.where((y_val == 0) & (y_pred == 0))[0]
-    fn_indices = np.where((y_val == 1) & (y_pred == 0))[0]
-    X_tp = X_val_np[tp_indices]
-    X_fp = X_val_np[fp_indices]
-    X_tn = X_val_np[tn_indices]
-    X_fn = X_val_np[fn_indices]
-    X_tp_df = pd.DataFrame(data=X_tp, columns=X_val.columns)
-    X_fp_df = pd.DataFrame(data=X_fp, columns=X_val.columns)
-    X_tn_df = pd.DataFrame(data=X_tn, columns=X_val.columns)
-    X_fn_df = pd.DataFrame(data=X_fn, columns=X_val.columns)
+    tp_indices = np.where((y == 1) & (y_pred == 1))[0]
+    fp_indices = np.where((y == 0) & (y_pred == 1))[0]
+    tn_indices = np.where((y == 0) & (y_pred == 0))[0]
+    fn_indices = np.where((y == 1) & (y_pred == 0))[0]
 
-    return X_tp_df, X_fp_df, X_tn_df, X_fn_df
+    def df_og_index(idx):
+        df = pd.DataFrame(X_np[idx], columns=X.columns)
+        df.index = X.index[idx]
+        return df
 
-def get_df_val_analysis(X_val, y_val, w, b, threshold, raw=False, quantile=None):
-    X_tp_df, X_fp_df, X_tn_df, X_fn_df = split_val_results(X_val, y_val, w, b, threshold)
+    return df_og_index(tp_indices), df_og_index(fp_indices), df_og_index(tn_indices), df_og_index(fn_indices)
+
+def get_df_model_analysis(X, y, w, b, threshold, raw=True, quantile=None):
+    X_tp_df, X_fp_df, X_tn_df, X_fn_df = split_model_results(X, y, w, b, threshold)
     
     if raw:
         tp = X_tp_df.copy(); tp["Group"] = "TP"
@@ -238,7 +234,7 @@ def get_df_val_analysis(X_val, y_val, w, b, threshold, raw=False, quantile=None)
         tn = X_tn_df.copy(); tn["Group"] = "TN"
         fn = X_fn_df.copy(); fn["Group"] = "FN"
 
-        df_profiles = pd.concat([tn, fp, fn, tp], axis=0, ignore_index=True)
+        df_profiles = pd.concat([tn, fp, fn, tp], axis=0)
         return df_profiles
     elif quantile is None:
         profile_tp = X_tp_df.mean()
@@ -251,9 +247,6 @@ def get_df_val_analysis(X_val, y_val, w, b, threshold, raw=False, quantile=None)
         profile_tn = X_tn_df.quantile(quantile)
         profile_fn = X_fn_df.quantile(quantile)
 
-    #var_to_check = ['total_contribution', 'MHKOOP', 'diff_educ_mid_bas', 'MRELSA', 'MFGEKIND' ,'MFWEKIND', 'MGODGE', 'MRELGE', 'MRELOV', 'MGODPR'] 
-    #var_to_check = ['total_contribution', 'MHKOOP', 'diff_educ_mid_bas', 'MRELSA', 'MFGEKIND' ,'MFWEKIND', 'MGODGE', 'MRELGE', 'MRELOV', 'MGODPR', 'MGODRK'] 
-
     df_profiles = pd.DataFrame({
         'TN': profile_tn,
         'FP': profile_fp,
@@ -262,6 +255,64 @@ def get_df_val_analysis(X_val, y_val, w, b, threshold, raw=False, quantile=None)
     })
     df_profiles.index.name = 'Variable'
     return df_profiles
+
+def get_df_profiles(feature_tracker, model=None):
+    if model is None: 
+        feature_tracker.flush_to_df(returnDf=False, removeTargets=True)
+        model = feature_tracker.get_trained_model(print_stats=False)
+    threshold = model.threshold
+
+    X_train, y_train, *_ = feature_tracker.return_split_train_eval()
+    #X_train_unscaled, *_ = feature_tracker.return_split_train_eval(to_scale=False)
+    df_profiles = get_df_model_analysis(X_train, y_train, model.w, model.b, threshold=threshold, raw=True)
+    return df_profiles
+
+
+def get_df_conf_matrix_split(feature_tracker, model=None):
+    df_profiles = get_df_profiles(feature_tracker, model)
+
+    df_tn = df_profiles[df_profiles["Group"] == "TN"].copy()
+    df_fp = df_profiles[df_profiles["Group"] == "FP"].copy()
+    df_fn = df_profiles[df_profiles["Group"] == "FN"].copy()
+    df_tp = df_profiles[df_profiles["Group"] == "TP"].copy()
+
+    return df_tn, df_fp, df_fn, df_tp
+
+def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True):
+    df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
+
+    if TP_FN: 
+        var1 = 'TP'
+        tab1 = df_tp[var].value_counts().rename('TP count')
+        var2 = 'FN'
+        tab2 = df_fn[var].value_counts().rename('FN count')
+
+    tab = pd.concat([tab1, tab2], axis=1).astype(int).rename_axis(var).reset_index()
+
+    total_row = pd.DataFrame([{
+        var: 'Total',
+        f'{var1} count': tab[f'{var1} count'].sum(),
+        f'{var2} count': tab[f'{var2} count'].sum()
+    }])
+    
+    tab = pd.concat([tab, total_row], ignore_index=True)
+    #print(tab.to_markdown(index=False))
+    return tab
+
+def get_df_conf_matrix_contrib(feature_tracker, model=None):
+    X = feature_tracker.flush_to_df(removeTargets=True)
+
+    if model is None: model = feature_tracker.get_trained_model(print_stats=False)
+
+    df_profiles = get_df_profiles(feature_tracker, model)
+    contrib = df_profiles[X.columns].mul(model.w, axis=1)
+    
+    # if TP_FN: diff = contrib[df_profiles['Group'] == 'TP'].mean() - contrib[df_profiles['Group'] == 'FN'].mean()
+
+    # diff.sort_values(key=abs, ascending=False).head()
+    
+    return contrib
+
 
 def print_df_analysis_html(df):
     def colorize_row(row):

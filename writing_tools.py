@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import stats_formula
+from IPython.display import HTML, Markdown
 
 def crossTab_with_caravan_to_markdown(df, var1, wFreq=False, wFreqCumul=False, wCond=False, transpose=False):
     ct = pd.crosstab(df[var1], df['CARAVAN'])
@@ -92,5 +93,9 @@ def crossTab_norm_to_markdown(var1, var2, df, min_count=5, hasDict=False, dict1 
     print()
 
 
-
+def print_table_side_by_side(dfs):
+    html = "<table><tr>"
+    for df in dfs: html += f"<td>{df.to_frame().to_html()}</td>"
+    html += "</tr></table>"
+    return HTML(html)
 
