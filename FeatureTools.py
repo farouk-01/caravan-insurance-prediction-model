@@ -381,6 +381,13 @@ def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True):
 
     return pd.DataFrame(rows)
 
+def compute_LD1(df_new, cols, lda, scaler, dummy_cols):
+    X = pd.get_dummies(df_new[cols].astype("category"), drop_first=False)
+    X = X.reindex(columns=dummy_cols, fill_value=0)
+    X_scaled = scaler.transform(X)
+    Z = lda.transform(X_scaled).ravel()
+    return Z
+
 
 def print_df_analysis_html(df):
     def colorize_row(row):

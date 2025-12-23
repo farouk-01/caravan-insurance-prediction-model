@@ -2,6 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import logisticRegression as logReg
 from sklearn.metrics import f1_score, precision_score, recall_score
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+import seaborn as sns
 
 def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_test, learning_rate=0.01, **kwargs):
     recalls_scores = []
@@ -252,3 +257,108 @@ def plot_hist_comparison( column, X_tp=None, X_fp=None, X_fn=None, X_tn=None, bi
     plt.legend()
     plt.grid(True)
     plt.show()
+
+def get_df_groups(TP_FN=False, FP_FN=False):
+    if TP_FN == FP_FN:
+        raise ValueError("Choisir exactement un : TP_FN=True ou FP_FN=True")
+    elif TP_FN:
+        var1, var2 = "TP", "FN"
+    else:
+        var1, var2 = "FP", "FN"
+    return var1, var2
+
+def plot_PCA(cols, df_profiles, TP_FN=False, FP_FN=False):
+    var1, var2 = get_df_groups(TP_FN, FP_FN)
+    df_plot = df_profiles[df_profiles["Group"].isin([var1,var2])].copy()
+
+    X = pd.get_dummies(df_plot[cols].astype("category"), drop_first=False)
+
+    X_scaled = StandardScaler(with_mean=False).fit_transform(X) 
+    pca = PCA(n_components=2, random_state=0)
+    Z = pca.fit_transform(X_scaled)
+
+    loadings = pd.DataFrame(
+        pca.components_.T, 
+        index=X.columns,    
+        columns=["PC1", "PC2"]
+    )
+
+    df_emb = pd.DataFrame(Z, columns=["PC1", "PC2"], index=df_plot.index)
+    df_emb["Group"] = df_plot["Group"].values
+
+    sns.scatterplot(data=df_emb, x="PC1", y="PC2", hue="Group", hue_order=[var1, var2], alpha=0.7, s=25)
+    plt.title("PCA")
+    plt.tight_layout()
+    return loadings
+
+def plot_LDA(cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
+    var1, var2 = get_df_groups(TP_FN, FP_FN)
+
+    df_plot = df_profiles[df_profiles["Group"].isin([var1, var2])].copy()
+    X = pd.get_dummies(df_plot[cols].astype("category"), drop_first=False)
+
+    y = df_plot["Group"].values
+    scaler = StandardScaler(with_mean=False)
+    X_scaled = scaler.fit_transform(X)
+
+    lda = LinearDiscriminantAnalysis(n_components=1)
+    Z = lda.fit_transform(X_scaled, y) 
+
+    loadings = pd.DataFrame(
+        {"LD1": lda.coef_.ravel()},
+        index=X.columns
+    ).sort_values("LD1", key=lambda s: s.abs(), ascending=False)
+
+    df_emb = pd.DataFrame({"LD1": Z.ravel()}, index=df_plot.index)
+    df_emb["Group"] = y
+
+    if return_vars:
+        return loadings, df_emb, lda, scaler, X.columns
+
+    # plt.figure(figsize=(7, 3))
+    sns.violinplot(data=df_emb, x="Group", y="LD1", order=[var1, var2], inner=None, cut=0)
+    sns.stripplot(data=df_emb, x="Group", y="LD1", order=[var1, var2], alpha=0.5, size=3)
+    plt.title("LDA (LD1)")
+    plt.tight_layout()
+
+    
+    return loadings
+
+def plot_LDA_all_groups(cols, df_profiles):
+    var1, var2 = 'TP', 'FN'
+
+    df_all = df_profiles[df_profiles["Group"].isin(['TP', 'FN', "FP", "TN"])].copy()
+    X_all = pd.get_dummies(df_all[cols].astype("category"), drop_first=False)
+
+    mask_train = df_all["Group"].isin([var1, var2])
+    X_train = X_all.loc[mask_train]
+    y_train = df_all.loc[mask_train, "Group"].values
+
+    scaler = StandardScaler(with_mean=False)
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_all_scaled = scaler.transform(X_all)
+
+    lda = LinearDiscriminantAnalysis(n_components=1)
+    lda.fit(X_train_scaled, y_train)
+
+    Z_all = lda.transform(X_all_scaled).ravel()
+
+    loadings = (
+        pd.DataFrame({"LD1": lda.coef_.ravel()}, index=X_all.columns)
+        .sort_values("LD1", key=lambda s: s.abs(), ascending=False)
+    )
+
+    df_emb = pd.DataFrame({
+        "LD1": Z_all,
+        "Group": df_all["Group"].values
+    }, index=df_all.index)
+
+    order = ['TP', 'FN', "FP", "TN"]
+
+    sns.violinplot(data=df_emb, x="Group", y="LD1", order=order, inner=None, cut=0)
+    sns.stripplot(data=df_emb, x="Group", y="LD1", order=order, alpha=0.5, size=3)
+
+    plt.title("LDA (LD1) de {} vs {}".format(var1, var2))
+    plt.tight_layout()
+
+    return loadings
