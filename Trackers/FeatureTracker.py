@@ -41,6 +41,15 @@ class FeatureTracker:
     def get_cols_to_scale(self):
         return self.cols_to_scale
     
+    def get_cols_to_scale_in_df(self):
+        return self.features.columns.intersection(self.get_cols_to_scale()).to_list()
+
+    def get_num_cat_cols(self):
+        num_cols = self.get_cols_to_scale_in_df()
+        X = self.flush_to_df(removeTargets=True)
+        cat_cols = list(set(X.columns.values) - set(num_cols))
+        return num_cols, cat_cols
+
     def get_features_cols(self, with_inter_terms=False):
         if with_inter_terms: return self.features.columns 
         else: return list(set(self.features.columns) - set(self.inter_terms))

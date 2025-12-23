@@ -267,15 +267,28 @@ def get_df_groups(TP_FN=False, FP_FN=False):
         var1, var2 = "FP", "FN"
     return var1, var2
 
-def plot_PCA(cols, df_profiles, TP_FN=False, FP_FN=False):
+def plot_PCA(cat_cols, num_cols, df_profiles, TP_FN=False, FP_FN=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
     df_plot = df_profiles[df_profiles["Group"].isin([var1,var2])].copy()
 
-    X = pd.get_dummies(df_plot[cols].astype("category"), drop_first=False)
+    scaler = StandardScaler()
+    
+    X_cat = pd.get_dummies(df_plot[cat_cols], drop_first=False)
 
-    X_scaled = StandardScaler(with_mean=False).fit_transform(X) 
+    if num_cols is not None:
+        X_num = df_plot[num_cols].astype(float)
+        X_num = pd.DataFrame(
+            scaler.fit_transform(X_num),
+            index = df_plot.index,
+            columns=num_cols
+        )
+    
+        X = pd.concat([X_num, X_cat], axis=1)
+    else:
+        X = X_cat
+
     pca = PCA(n_components=2, random_state=0)
-    Z = pca.fit_transform(X_scaled)
+    Z = pca.fit_transform(X)
 
     loadings = pd.DataFrame(
         pca.components_.T, 
@@ -291,18 +304,25 @@ def plot_PCA(cols, df_profiles, TP_FN=False, FP_FN=False):
     plt.tight_layout()
     return loadings
 
-def plot_LDA(cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
+def plot_LDA(categorie_cols, continue_cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
-
     df_plot = df_profiles[df_profiles["Group"].isin([var1, var2])].copy()
-    X = pd.get_dummies(df_plot[cols].astype("category"), drop_first=False)
 
+    scaler = StandardScaler()
+    
+    X_num = df_plot[continue_cols].astype(float)
+    X_num = pd.DataFrame(
+        scaler.fit_transform(X_num),
+        index = df_plot.index,
+        columns=continue_cols
+    )
+
+    X_cat = pd.get_dummies(df_plot[categorie_cols], drop_first=False)
+    X = pd.concat([X_num, X_cat], axis=1)
     y = df_plot["Group"].values
-    scaler = StandardScaler(with_mean=False)
-    X_scaled = scaler.fit_transform(X)
 
     lda = LinearDiscriminantAnalysis(n_components=1)
-    Z = lda.fit_transform(X_scaled, y) 
+    Z = lda.fit_transform(X, y) 
 
     loadings = pd.DataFrame(
         {"LD1": lda.coef_.ravel()},
