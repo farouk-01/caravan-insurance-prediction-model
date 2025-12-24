@@ -5,6 +5,62 @@ import glob
 import logisticRegression
 from sklearn.model_selection import train_test_split
 
+class DataInfo:
+    _instance = None
+    _exist = False
+
+    def __new__(cls, df):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, df):
+        if self.__class__._exist:
+            return
+        self.df = df
+        self.desc_dict = df.attrs['description']
+        self.__class__._exist = True
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None or not cls._exist: raise Exception("Appelle DataInfo(df) avant")
+        return cls._instance
+
+    def get_desc_dict(self):
+        return self.desc_dict
+    
+    def get_dict_of(self, vars=None):
+        desc_dict = self.get_desc_dict()
+        
+        if vars is None: return desc_dict
+
+        return {v: desc_dict[v] for v in vars if v in desc_dict}
+    
+    def _format_desc(self, desc):
+        desc = re.sub(r"\s+", "_", desc.strip())
+        return desc
+    
+    def _get_new_label(self, var, dict_of_var):
+        desc = self._format_desc(dict_of_var.get(var))
+        return f"{var}_{desc}" if desc else var
+
+    def replace_by_name_desc(self, obj, vars=None):
+        desc_dict = self.get_desc_dict() if vars is None else self.get_dict_of(vars)
+        
+        if isinstance(obj, pd.Series):
+            return obj.rename(index={i: self._get_new_label(i, desc_dict) for i in obj.index})
+        
+        elif isinstance(obj, pd.DataFrame):
+            df = obj.copy()
+            df = df.rename(columns={c: self._get_new_label(c, desc_dict) for c in df.columns})
+            df = df.rename(index={i: self._get_new_label(i, desc_dict) for i in df.index})
+            return df
+        
+        raise TypeError("obj doit etre Series ou DataFrame")
+
+        
+
+
 def read_dictionnary(df):
     with open("insurance_data/dictionary.txt", "r") as f:
         text = f.read()
@@ -49,6 +105,7 @@ def get_data():
 
 
     df = read_dictionnary(df)
+    data_info = DataInfo(df)
     return df
 
 def get_split_train_eval_data(df, toNpy=False):
@@ -293,3 +350,21 @@ def apply_Lx_to_index(idx, name, level):
 
     # 2. Replace ONLY the matched part, leave the rest untouched
     return idx[:match.start()] + label + idx[match.end():]
+
+def prepare_catpca_df(df, cols, cat_cols):
+    df_for_catpca = df.copy()
+    dropped = []
+    for c in cols:
+        s = df_for_catpca[c]
+        if s.nunique() == 1:
+            dropped.append(c)
+    if dropped: 
+        df_for_catpca.drop(columns=dropped, inplace=True)
+
+    df_for_catpca[cat_cols] = df_for_catpca[cat_cols].astype('Int64')
+    
+    for c in cat_cols:
+        s = pd.DataFrame(df_for_catpca[c])
+        if s.min().values[0] == 0:
+            df_for_catpca[c] = s + 1
+    return df_for_catpca.copy()
