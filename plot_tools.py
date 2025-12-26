@@ -267,7 +267,7 @@ def get_df_groups(TP_FN=False, FP_FN=False):
         var1, var2 = "FP", "FN"
     return var1, var2
 
-def plot_PCA(cat_cols, num_cols, df_profiles, TP_FN=False, FP_FN=False):
+def plot_PCA(cat_cols, num_cols, df_profiles, one_hot_cat=False, TP_FN=False, FP_FN=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
     df_plot = df_profiles[df_profiles["Group"].isin([var1,var2])].copy()
 

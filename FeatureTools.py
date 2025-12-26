@@ -223,16 +223,16 @@ def split_model_results(X, y, w, b, threshold):
         df.index = X.index[idx]
         return df
 
-    return df_og_index(tp_indices), df_og_index(fp_indices), df_og_index(tn_indices), df_og_index(fn_indices)
+    return df_og_index(tn_indices), df_og_index(fp_indices), df_og_index(fn_indices), df_og_index(tp_indices)
 
 def get_df_model_analysis(X, y, w, b, threshold, raw=True, quantile=None):
-    X_tp_df, X_fp_df, X_tn_df, X_fn_df = split_model_results(X, y, w, b, threshold)
+    X_tn_df, X_fp_df, X_fn_df, X_tp_df = split_model_results(X, y, w, b, threshold)
     
     if raw:
-        tp = X_tp_df.copy(); tp["Group"] = "TP"
-        fp = X_fp_df.copy(); fp["Group"] = "FP"
         tn = X_tn_df.copy(); tn["Group"] = "TN"
+        fp = X_fp_df.copy(); fp["Group"] = "FP"
         fn = X_fn_df.copy(); fn["Group"] = "FN"
+        tp = X_tp_df.copy(); tp["Group"] = "TP"
 
         df_profiles = pd.concat([tn, fp, fn, tp], axis=0)
         return df_profiles

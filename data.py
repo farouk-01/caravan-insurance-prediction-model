@@ -353,18 +353,14 @@ def apply_Lx_to_index(idx, name, level):
 
 def prepare_catpca_df(df, cols, cat_cols):
     df_for_catpca = df.copy()
-    dropped = []
-    for c in cols:
-        s = df_for_catpca[c]
-        if s.nunique() == 1:
-            dropped.append(c)
+    dropped = [c for c in cols if df_for_catpca[c].nunique() <= 1]
     if dropped: 
         df_for_catpca.drop(columns=dropped, inplace=True)
+        cat_cols = [c for c in cat_cols if c in df_for_catpca.columns]
 
     df_for_catpca[cat_cols] = df_for_catpca[cat_cols].astype('Int64')
     
     for c in cat_cols:
-        s = pd.DataFrame(df_for_catpca[c])
-        if s.min().values[0] == 0:
-            df_for_catpca[c] = s + 1
+        if df_for_catpca[c].min() == 0:
+            df_for_catpca[c] = df_for_catpca[c] + 1
     return df_for_catpca.copy()
