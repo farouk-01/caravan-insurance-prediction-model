@@ -4,7 +4,6 @@ plot_catpca <- function(
   df, var1, var2,
   ndim = 2, num_cols = NULL, group_col = "Group"
 ) {
-  # selon syntaxe R : df[ rows , columns , drop = TRUE/FALSE ]
   df_x <- df[df[[group_col]] %in% c(var1, var2), , drop = FALSE]
   grp <- df_x[[group_col]]
 
@@ -24,7 +23,7 @@ plot_catpca <- function(
 
   plot(fit_ord$objectscores[, 1], fit_ord$objectscores[, 2],
     pch = 16, cex = 1.5, col = adjustcolor(cols, alpha.f = 0.5),
-    xlab = "Comp 1", ylab = "Comp 2", asp = 1, main = "CATPCA Plot"
+    xlab = "CATPC1", ylab = "CATPC2", asp = 1, main = "CATPCA Plot"
   )
 
   points(aggregate(fit_ord$objectscores, list(grp), mean)[, 2:3],
@@ -36,4 +35,9 @@ plot_catpca <- function(
     col = c("steelblue", "tomato"),
     pch = 16, bty = "n"
   )
+
+  invisible(list(
+    scores = fit_ord$objectscores,
+    loadings = fit_ord$loadings
+  ))
 }

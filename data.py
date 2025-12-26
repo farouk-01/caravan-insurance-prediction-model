@@ -37,11 +37,13 @@ class DataInfo:
         return {v: desc_dict[v] for v in vars if v in desc_dict}
     
     def _format_desc(self, desc):
+        if desc is None: return None
         desc = re.sub(r"\s+", "_", desc.strip())
         return desc
     
     def _get_new_label(self, var, dict_of_var):
         desc = self._format_desc(dict_of_var.get(var))
+        if desc is None: return var
         return f"{var}_{desc}" if desc else var
 
     def replace_by_name_desc(self, obj, vars=None):
