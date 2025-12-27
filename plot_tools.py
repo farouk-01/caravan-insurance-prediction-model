@@ -310,7 +310,7 @@ def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP
         plt.show()
         return loadings
 
-def plot_LDA(categorie_cols, continue_cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
+def plot_LDA(categorie_cols, continue_cols, df_profiles, one_hot_cat=False, TP_FN=False, FP_FN=False, return_vars=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
     df_plot = df_profiles[df_profiles["Group"].isin([var1, var2])].copy()
 
@@ -323,7 +323,14 @@ def plot_LDA(categorie_cols, continue_cols, df_profiles, TP_FN=False, FP_FN=Fals
         columns=continue_cols
     )
 
-    X_cat = pd.get_dummies(df_plot[categorie_cols], drop_first=False)
+    if one_hot_cat: X_cat = pd.get_dummies(df_plot[categorie_cols], drop_first=False)
+    else:
+        X_cat = df_plot[categorie_cols].astype("Int64")
+        X_cat = pd.DataFrame(
+            scaler.fit_transform(X_cat),
+            index=df_plot.index,
+            columns=categorie_cols
+        )
     X = pd.concat([X_num, X_cat], axis=1)
     y = df_plot["Group"].values
 
