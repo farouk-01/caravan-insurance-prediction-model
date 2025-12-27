@@ -50,8 +50,9 @@ class DataInfo:
         desc_dict = self.get_desc_dict() if vars is None else self.get_dict_of(vars)
         
         if isinstance(obj, pd.Series):
+            if obj.index.name is not None: obj.rename_axis(self._get_new_label(obj.index.name, desc_dict), inplace=True)
             return obj.rename(index={i: self._get_new_label(i, desc_dict) for i in obj.index})
-        
+            
         elif isinstance(obj, pd.DataFrame):
             df = obj.copy()
             df = df.rename(columns={c: self._get_new_label(c, desc_dict) for c in df.columns})
