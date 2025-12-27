@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import re
 import glob 
-import logisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 class DataInfo:
     _instance = None
@@ -19,12 +19,26 @@ class DataInfo:
             return
         self.df = df
         self.desc_dict = df.attrs['description']
+        self.scaler = StandardScaler()
         self.__class__._exist = True
 
     @classmethod
     def get_instance(cls):
         if cls._instance is None or not cls._exist: raise Exception("Appelle DataInfo(df) avant")
         return cls._instance
+
+    def fit_scaler(self, X, cols_to_scale):
+        self.scaler.fit(X[cols_to_scale])
+        return self
+
+    def transform(self, X, cols_to_scale):
+        X_scaled = X.copy()
+        X_scaled[cols_to_scale] = self.scaler.transform(X_scaled[cols_to_scale])
+        return X_scaled
+    
+    def fit_transform(self, X, cols_to_scale):
+        self.fit_scaler(X, cols_to_scale)
+        return self.transform(X, cols_to_scale)
 
     def get_desc_dict(self):
         return self.desc_dict

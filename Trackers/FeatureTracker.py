@@ -105,12 +105,18 @@ class FeatureTracker:
 
         X_train_cols = X_train.columns
         if to_scale:
-            for var in self.cols_to_scale:
-                scaler = StandardScaler()
-                if var in X_train_cols:
-                    scaler.fit(X_train[[var]])
-                    X_train[[var]] = scaler.transform(X_train[[var]])
-                    X_val[[var]] = scaler.transform(X_val[[var]])
+            data_info = data.DataInfo.get_instance()
+            cols_in_df_to_scale = [c for c in self.cols_to_scale if c in X_train_cols]
+            if cols_in_df_to_scale:
+                X_train = X_train.copy()
+                X_val = X_val.copy()
+                X_train = data_info.fit_transform(X_train, cols_in_df_to_scale)
+                X_val = data_info.transform(X_val, cols_in_df_to_scale)
+            # for var in self.cols_to_scale:
+            #     if var in X_train_cols:
+            #         scaler.fit(X_train[[var]])
+            #         X_train[[var]] = scaler.transform(X_train[[var]])
+            #         X_val[[var]] = scaler.transform(X_val[[var]])
         
         if toNpy:
             X_train = X_train.to_numpy()
