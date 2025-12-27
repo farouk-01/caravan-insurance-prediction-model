@@ -4,6 +4,7 @@ import data
 import logisticRegression
 import numpy as np
 import Model
+import copy
 
 class FeatureTracker:
     def __init__(self, df):
@@ -71,7 +72,7 @@ class FeatureTracker:
             if np.isinf(s).any():
                 s.replace([np.inf, -np.inf], 0, inplace=True)
             self.features[name] = s.copy()
-            if toScale: self.cols_to_scale.append(name)
+            if toScale and name not in self.cols_to_scale: self.cols_to_scale.append(name)
         if name in self.to_remove_cols:
             self.to_remove_cols.remove(name)
 
@@ -289,3 +290,47 @@ class FeatureTracker:
                     model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
                     print()
                     featureTester.remove(c)
+    
+    def make_eval_tracker(self):
+        df_eval = data.get_eval_data()
+        categorical_non_ordinales = ['MOSTYPE', 'MOSHOOFD']
+        df_eval = pd.get_dummies(df_eval, columns=categorical_non_ordinales, prefix=categorical_non_ordinales, dtype=int, drop_first=True)
+
+        feature_eval_tracker = FeatureTracker(df_eval)
+        feature_eval_tracker.to_remove_cols = self.to_remove_cols.copy()
+        feature_eval_tracker.cols_to_scale = self.cols_to_scale.copy()
+
+        income_brackets_midpoints = {
+            'MINKM30': 15000,    
+            'MINK3045': 37500,   
+            'MINK4575': 60000,   
+            'MINK7512': 98500,   
+            'MINK123M': 180000 
+        }
+
+        income_cols = list(income_brackets_midpoints.keys())
+        weighted_somme = 0
+        for col in income_cols:
+            weighted_somme += df_eval[col] * income_brackets_midpoints[col]
+        total = df_eval[income_cols].sum(axis=1)
+
+        for c in income_cols:
+            feature_eval_tracker.remove(c)
+        feature_eval_tracker.remove('MINKGEM')
+
+        feature_eval_tracker.add('avg_area_income',  weighted_somme / total, toScale=True)
+        feature_eval_tracker.add('PPERSAUTx_is_PBRAND_3_4',((df_eval["PPERSAUT"])*(df_eval['PBRAND'].isin([3,4]))))
+
+        return feature_eval_tracker
+    
+    def make_split_eval_data(self):
+        eval_tracker = self.make_eval_tracker()
+        X = eval_tracker.flush_to_df()
+        cols_to_scale = eval_tracker.cols_to_scale
+        data_info = data.DataInfo.get_instance()
+        cols_in_df_to_scale = [c for c in cols_to_scale if c in X.columns]
+        if cols_in_df_to_scale:
+            X = X.copy()
+            X = data_info.transform(X, cols_in_df_to_scale)
+        y = data.get_eval_targets()
+        return X, y

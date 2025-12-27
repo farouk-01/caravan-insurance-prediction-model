@@ -138,7 +138,7 @@ def get_split_train_eval_data(df, toNpy=False):
         y_val = y_val.to_numpy()
     return X_train, X_val, y_train, y_val
 
-def get_test_data():
+def get_eval_data():
     df = pd.read_table('insurance_data/ticeval2000.txt')
 
     col_names = [
@@ -169,21 +169,21 @@ def add_interactions_terms(X, interactions):
         X_new[inter_name] = X_new[var1] * X_new[var2]
     return X_new
 
-def get_test_data_with_terms():
-    interactions_to_add_1 = [
-        ("PPERSAUT", "APLEZIER"),
-        ("PPERSAUT", "PPLEZIER"),
-        ("PPERSAUT", "PBRAND"),
-        ("APERSAUT", "PBRAND"),
-        ("PPLEZIER", "MINKGEM"),
-        ("PPLEZIER", "MKOOPKLA"),
-        ("PPLEZIER", "MHKOOP")
-    ]
-    df = get_test_data()
-    df = add_interactions_terms(df, interactions_to_add_1 )
-    return df
+# def get_test_data_with_terms():
+#     interactions_to_add_1 = [
+#         ("PPERSAUT", "APLEZIER"),
+#         ("PPERSAUT", "PPLEZIER"),
+#         ("PPERSAUT", "PBRAND"),
+#         ("APERSAUT", "PBRAND"),
+#         ("PPLEZIER", "MINKGEM"),
+#         ("PPLEZIER", "MKOOPKLA"),
+#         ("PPLEZIER", "MHKOOP")
+#     ]
+#     df = get_test_data()
+#     df = add_interactions_terms(df, interactions_to_add_1 )
+#     return df
 
-def get_test_targets():
+def get_eval_targets():
     df = pd.read_table('insurance_data/tictgts2000.txt')
     df.columns = ['CARAVAN']
     return df
