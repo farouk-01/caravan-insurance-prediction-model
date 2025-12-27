@@ -267,7 +267,7 @@ def get_df_groups(TP_FN=False, FP_FN=False):
         var1, var2 = "FP", "FN"
     return var1, var2
 
-def plot_PCA(cat_cols, num_cols, df_profiles, one_hot_cat=False, TP_FN=False, FP_FN=False):
+def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP_FN=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
     df_plot = df_profiles[df_profiles["Group"].isin([var1,var2])].copy()
 
@@ -299,10 +299,16 @@ def plot_PCA(cat_cols, num_cols, df_profiles, one_hot_cat=False, TP_FN=False, FP
     df_emb = pd.DataFrame(Z, columns=["PC1", "PC2"], index=df_plot.index)
     df_emb["Group"] = df_plot["Group"].values
 
-    sns.scatterplot(data=df_emb, x="PC1", y="PC2", hue="Group", hue_order=[var1, var2], alpha=0.7, s=25)
-    plt.title("PCA")
-    plt.tight_layout()
-    return loadings
+    fig, ax = plt.subplots()
+
+    sns.scatterplot(data=df_emb, x="PC1", y="PC2", hue="Group", hue_order=[var1, var2], alpha=0.7, s=25, ax=ax)
+    ax.set_title("PCA")
+    fig.tight_layout()
+
+    if return_plot: return loadings, fig, ax
+    else:
+        plt.show()
+        return loadings
 
 def plot_LDA(categorie_cols, continue_cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)

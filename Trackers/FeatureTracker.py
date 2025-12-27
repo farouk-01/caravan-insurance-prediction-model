@@ -16,6 +16,10 @@ class FeatureTracker:
     
     def set_df(self, df):
         self.df = df.copy()
+
+    def refresh_tracker(self):
+        self.features = self.features.copy()
+        self.removed_features = self.removed_features.copy()
     
     def getDf(self):
         return self.df.copy()

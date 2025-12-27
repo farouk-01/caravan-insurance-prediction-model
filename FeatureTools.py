@@ -278,6 +278,12 @@ def get_df_conf_matrix_split(feature_tracker, model=None):
 
     return df_tn, df_fp, df_fn, df_tp
 
+def make_total_row(df, vars):
+    total_row = {vars: "Total"}
+    for c in df.columns:
+        if c != vars: total_row[c] = df[c].sum()
+    return pd.DataFrame([total_row])
+
 def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True, with_total=True):
     df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
 
@@ -290,11 +296,7 @@ def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True
     tab = pd.concat([tab1, tab2], axis=1).fillna(0).astype(int).rename_axis(var).reset_index()
 
     if with_total:
-        total_row = pd.DataFrame([{
-            var: 'Total',
-            f'{var1} count': tab[f'{var1} count'].sum(),
-            f'{var2} count': tab[f'{var2} count'].sum()
-        }])
+        total_row = make_total_row(tab, var)
         tab = pd.concat([tab, total_row], ignore_index=True)
     #print(tab.to_markdown(index=False))
     return tab
