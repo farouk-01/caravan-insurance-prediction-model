@@ -292,8 +292,14 @@ def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True
         tab2 = df_tp[var].value_counts().rename('TP count')
         var1 = 'FN'
         tab1 = df_fn[var].value_counts().rename('FN count')
+    else:
+        var2 = 'FP'
+        tab2 = df_fp[var].value_counts().rename('FP count')
+        var1 = 'TN'
+        tab1 = df_tn[var].value_counts().rename('TN count')
 
     tab = pd.concat([tab1, tab2], axis=1).fillna(0).astype(int).rename_axis(var).reset_index()
+    tab = tab.sort_values(by=var)
 
     if with_total:
         total_row = make_total_row(tab, var)

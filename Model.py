@@ -32,15 +32,16 @@ class Model:
     def predict_probas(self, X):
         return logisticRegression.predict_probas(X, self.w, self.b)
     
-    def make_conf_matrix(self, X, y):
-        y_pred = logisticRegression.predict(X, self.w, self.b, self.threshold)
+    def make_conf_matrix(self, X, y, threshold=None):
+        if threshold is None: threshold = self.threshold
+        y_pred = logisticRegression.predict(X, self.w, self.b, threshold)
         return confusion_matrix(y, y_pred)
     
-    def get_conf_matrix(self, feature_tracker:FeatureTracker, of_train_set=False):
+    def get_conf_matrix(self, feature_tracker:FeatureTracker, of_train_set=False, threshold=None):
         if of_train_set : X, y, *_ = feature_tracker.return_split_train_eval()
         else: X_train, y_train, X, y = feature_tracker.return_split_train_eval()
-        
-        return self.make_conf_matrix(X, y)
+
+        return self.make_conf_matrix(X, y, threshold=threshold)
     
 
 

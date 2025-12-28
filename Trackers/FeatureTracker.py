@@ -214,6 +214,7 @@ class FeatureTracker:
         if returnModel: return model
     
     def feature_comparator(self, X, base_extra_cols=None, cols_to_test=None, cols_to_remove=None, add_inter_terms=True,
+                           test_on_train=False,
                             learning_rate=0.01, epochs=1000, class_weight=1, print_metrics=True, **kwargs):
         self.remove_list(cols_to_test)
         featureTester = FeatureTracker(X)
@@ -243,7 +244,8 @@ class FeatureTracker:
             iterations=epochs, **kwargs
         )
 
-        model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+        if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
+        else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
         print()
 
         if cols_to_test is not None:
@@ -265,7 +267,8 @@ class FeatureTracker:
                     iterations=epochs, threshold_method='F1', **kwargs
                 )
 
-                model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+                if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
+                else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
                 print()
                 featureTester.remove(c)
 
@@ -285,7 +288,8 @@ class FeatureTracker:
                 iterations=epochs, threshold_method='F1'
             )
 
-            model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+            if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
+            else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
             print()
             
             if cols_to_test is not None:
@@ -305,7 +309,8 @@ class FeatureTracker:
                         iterations=epochs, threshold_method='F1'
                     )
 
-                    model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+                    if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
+                    else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
                     print()
                     featureTester.remove(c)
     
