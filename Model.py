@@ -1,5 +1,7 @@
 import logisticRegression
 import copy
+from Trackers import FeatureTracker
+from sklearn.metrics import confusion_matrix
 
 class Model:
     def __init__(self, w, b, threshold=0.5, score_f1=None, score_auc=None, improvement=""):
@@ -29,6 +31,18 @@ class Model:
     
     def predict_probas(self, X):
         return logisticRegression.predict_probas(X, self.w, self.b)
+    
+    def make_conf_matrix(self, X, y):
+        y_pred = logisticRegression.predict(X, self.w, self.b, self.threshold)
+        return confusion_matrix(y, y_pred)
+    
+    def get_conf_matrix(self, feature_tracker:FeatureTracker, of_train_set=False):
+        if of_train_set : X, y, *_ = feature_tracker.return_split_train_eval()
+        else: X_train, y_train, X, y = feature_tracker.return_split_train_eval()
+        
+        return self.make_conf_matrix(X, y)
+    
+
 
 def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=1000, extra_weight=1, improvement="", 
                  threshold_method=None, set_threshold_to=None, l2_reg=False, l1_reg=False, lambda_const=None, to_print=False, score_f1 = None):

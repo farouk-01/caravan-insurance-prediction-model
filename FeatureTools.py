@@ -288,10 +288,10 @@ def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True
     df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
 
     if TP_FN: 
-        var1 = 'TP'
-        tab1 = df_tp[var].value_counts().rename('TP count')
-        var2 = 'FN'
-        tab2 = df_fn[var].value_counts().rename('FN count')
+        var2 = 'TP'
+        tab2 = df_tp[var].value_counts().rename('TP count')
+        var1 = 'FN'
+        tab1 = df_fn[var].value_counts().rename('FN count')
 
     tab = pd.concat([tab1, tab2], axis=1).fillna(0).astype(int).rename_axis(var).reset_index()
 
