@@ -3,9 +3,9 @@ from typing import Optional
 
 @dataclass
 class ModelConfig:
-    threshold:Optional[float] = None
+    threshold:float = 0.1
     class_weight:Optional[float] = None
-    learning_rate:Optional[float] = None
+    learning_rate:float = 0.01
     l2_reg:bool = False
     l1_reg:bool = False
     lambda_const:Optional[float] = None

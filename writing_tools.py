@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import stats_formula
-from IPython.display import HTML, Markdown
+from IPython.display import HTML, Markdown, display
+import logisticRegression
 
 def crossTab_with_caravan_to_markdown(df, var1, wFreq=False, wFreqCumul=False, wCond=False, transpose=False):
     ct = pd.crosstab(df[var1], df['CARAVAN'])
@@ -98,4 +99,38 @@ def print_table_side_by_side(dfs):
     for df in dfs: html += f"<td>{df.to_frame().to_html()}</td>"
     html += "</tr></table>"
     return HTML(html)
+
+def print_model_comparator(model1, model2, display_to_md=True):
+    stats1 = logisticRegression.get_model_stats(
+        model1.X_val, model1.y_val,
+        model1.w, model1.b,
+        model1.threshold
+    )
+    stats2 = logisticRegression.get_model_stats(
+        model2.X_val, model2.y_val,
+        model2.w, model2.b,
+        model2.threshold
+    )
+
+    cm1 = stats1["confusion_matrix"]
+    cm2 = stats2["confusion_matrix"]
+
+    name1 = model1.name or "Model 1"
+    name2 = model2.name or "Model 2"
+
+
+    table_md = (
+        f"|  | **{name1}** | **{name2}** |\n"
+        f"|---|---|---|\n"
+        f"| **Matrice de confusion** | "
+        f"$$\\begin{{bmatrix}}{cm1[0,0]} & {cm1[0,1]}\\\\ {cm1[1,0]} & {cm1[1,1]}\\end{{bmatrix}}$$ | "
+        f"$$\\begin{{bmatrix}}{cm2[0,0]} & {cm2[0,1]}\\\\ {cm2[1,0]} & {cm2[1,1]}\\end{{bmatrix}}$$ |"
+    )
+
+    if display_to_md:
+        display(Markdown(table_md))
+    else:
+        print(table_md)
+
+
 
