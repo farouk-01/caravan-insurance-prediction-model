@@ -45,9 +45,9 @@ class Model:
     
 
 
-def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=1000, extra_weight=1, improvement="", 
+def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=1000, class_weight=1, improvement="", 
                  threshold_method=None, set_threshold_to=None, l2_reg=False, l1_reg=False, lambda_const=None, to_print=False, score_f1 = None):
-    w, b = logisticRegression.logistic_regression(X_train, y_train, X_val, y_val, learning_rate=learning_rate, iterations=iterations, extra_weight=extra_weight, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lambda_const, to_print=to_print)
+    w, b = logisticRegression.logistic_regression(X_train, y_train, X_val, y_val, learning_rate=learning_rate, iterations=iterations, class_weight=class_weight, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lambda_const, to_print=to_print)
     if set_threshold_to is not None: threshold=set_threshold_to
     elif threshold_method == "F1":
         threshold, score_f1 = logisticRegression.f1_score_threshold(X_val, y_val, w, b)

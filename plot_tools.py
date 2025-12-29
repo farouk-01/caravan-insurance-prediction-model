@@ -14,7 +14,7 @@ def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_t
     f1_scores = []
 
     for weight in weights_to_test:
-        w, b = logReg.logistic_regression(X_train, y_train, X_val, y_val, learning_rate, extra_weight=weight, to_print=False, **kwargs)
+        w, b = logReg.logistic_regression(X_train, y_train, X_val, y_val, learning_rate, class_weight=weight, to_print=False, **kwargs)
         y_pred = logReg.predict(X_val, w, b, threshold)
         recalls_scores.append(recall_score(y_val, y_pred, zero_division=0))
         precision_scores.append(precision_score(y_val, y_pred, zero_division=0))
@@ -80,9 +80,10 @@ def plot_threshold_metrics(model, feature_tracker, step=0.01,  range_min=0, rang
     plt.grid(True)
     plt.show()
 
-def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plotF1=False, toPrint=False, toPlot=False, **kwargs):
+def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plot_f1=False, to_print=False, to_plot=False, plot_recall=False, **kwargs):
     val_losses = []
     f1_scores = []
+    recall_scores = []
     cost_min = []
     cost_max = []
     for lr in lrs:
@@ -91,14 +92,14 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plotF1=
             learning_rate=lr, 
             iterations=iterations, 
             return_costs=True,  
-            to_print=toPrint,
+            to_print=to_print,
             **kwargs
         )
-        #attention c'est le validation test ici, donc pas de extra_weight
         val_losses.append(val_costs[-1])
 
         val_pred = logReg.predict(X_val, w, b, 0.5)
         f1_scores.append(f1_score(y_val, val_pred, zero_division=0))
+        recall_scores.append(recall_score(y_val, val_pred, zero_division=0))
 
         last_10cost = max(1, int(0.1 * iterations))
         cost_min.append(np.min(val_costs[-last_10cost:]))
@@ -107,32 +108,40 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plotF1=
     best_idx = np.argmax(f1_scores)
     best_lr = lrs[best_idx]
     best_f1 = f1_scores[best_idx]
-    if toPlot:
-        fig, ax1 = plt.subplots(figsize=(12,8))
+    best_recall = recall_scores[best_idx]
+
+    if to_plot:
+        fig, ax1 = plt.subplots()
 
         ax1.semilogx(lrs, val_losses, marker='o', color='tab:red', label='val loss')
         ax1.fill_between(lrs, cost_min, cost_max, color='orange', alpha=0.5, label='Cost Oscillation')
         ax1.set_xlabel('learning rate')
         ax1.set_ylabel('val loss', color='tab:red')
-        #ax1.invert_yaxis()
         ax1.tick_params(axis='y', labelcolor='tab:red')
 
         ax2 = ax1.twinx()
-        if plotF1:
+        ax2.set_ylabel('score', color='tab:blue')
+        ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+        if plot_f1:
             ax2.semilogx(lrs, f1_scores, marker='o', color='tab:blue', label='val F1')
             ax2.scatter(best_lr, best_f1, s=100, color='green', label=f'Best f1: {best_f1:.4f} at lr of {best_lr:.6f}')
-        ax2.set_ylabel('val F1', color='tab:blue')
-        ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+        if plot_recall:
+            ax2.semilogx(lrs, recall_scores, marker='o', color='tab:purple', label='val Recall')
+            ax2.scatter(best_lr, best_recall, s=80, color='tab:purple',
+                        label=f'Recall au best f1: {best_recall:.4f}')
+
 
 
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
         ax1.grid(which='both', linestyle='--', linewidth=0.5)
-        plt.title('Validation Loss & F1 vs Learning Rate')
+        plt.title('Validation Loss & score vs Learning Rate')
         #plt.xticks(lrs, [f"{lr:.3f}" for lr in lrs])
         plt.show()
-    return val_losses, f1_scores
+    return val_losses, f1_scores, recall_scores
 
 def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, to_print=False, **kwargs):
     w, b, train_costs, val_costs = logReg.logistic_regression(

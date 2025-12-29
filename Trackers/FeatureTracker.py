@@ -106,16 +106,16 @@ class FeatureTracker:
 
         #if name in self.varsToScale: self.varsToScale.remove(name)
     
-    def restore(self, name, isToScale=False):
+    def restore(self, name, is_to_scale=False):
         if name in self.removed_features: self.features[name] = self.removed_features.pop(name)
         if name in self.to_remove_cols: self.to_remove_cols.remove(name)
-        if isToScale and name not in self.cols_to_scale: self.cols_to_scale.append(name)
+        if is_to_scale and name not in self.cols_to_scale: self.cols_to_scale.append(name)
     
     def restore_list(self, cols):
         for c in cols: self.restore(c)
 
-    def return_split_train_eval(self, X_other=None, toNpy=False, notToRemove=[], to_scale=True):
-        if X_other is not None: X = self.flush_to_df(X_other=X_other, notToRemove=notToRemove)
+    def return_split_train_eval(self, X_other=None, to_np=False, not_to_remove=[], to_scale=True):
+        if X_other is not None: X = self.flush_to_df(X_other=X_other, notToRemove=not_to_remove)
         else: X = self.df
         X_train, X_val, y_train, y_val = data.get_split_train_eval_data(X)
 
@@ -134,7 +134,7 @@ class FeatureTracker:
             #         X_train[[var]] = scaler.transform(X_train[[var]])
             #         X_val[[var]] = scaler.transform(X_val[[var]])
         
-        if toNpy:
+        if to_np:
             X_train = X_train.to_numpy()
             X_val = X_val.to_numpy()
             y_train = y_train.to_numpy()
@@ -199,13 +199,13 @@ class FeatureTracker:
         state_tracker.flush_to_df(returnDf=False)
         return state_tracker
 
-    def get_trained_model(self, learning_rate=0.01, epochs=1000, class_weight=1, set_threshold_to=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
-        X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(toNpy=True)
+    def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, set_threshold_to=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
+        X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(to_np=True)
         if threshold_method is not None: set_threshold_to=None
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
-            learning_rate=learning_rate, extra_weight=class_weight,
-            iterations=epochs,
+            learning_rate=learning_rate, class_weight=class_weight,
+            iterations=iterations,
             threshold_method=threshold_method,
             set_threshold_to=set_threshold_to,
             **kwargs
@@ -234,13 +234,13 @@ class FeatureTracker:
         X = featureTester.flush_to_df()
         
 
-        X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+        X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
         print(f'|----- Variable de base -----|')
 
         #threshold_method='F1' removed
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
-            learning_rate=learning_rate, extra_weight=class_weight,
+            learning_rate=learning_rate, class_weight=class_weight,
             iterations=epochs, **kwargs
         )
 
@@ -256,14 +256,14 @@ class FeatureTracker:
                 featureTester.add(c, colToAdd, toScale=isToScale)
                 X = featureTester.flush_to_df()
 
-                X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+                X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
                 
                 print(f'|----- {c} -----|')
                 #print(len(X.columns))
                 
                 model = Model.create_model(
                     X_train_np, y_train_np, X_val_np, y_val_np, 
-                    learning_rate=learning_rate, extra_weight=class_weight,
+                    learning_rate=learning_rate, class_weight=class_weight,
                     iterations=epochs, threshold_method='F1', **kwargs
                 )
 
@@ -278,13 +278,13 @@ class FeatureTracker:
                 featureTester.add(c, colToAdd, toScale=isToScale)
             X = featureTester.flush_to_df()
 
-            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
 
             print(f'|----- Test avec interactions terms -----|')
             #print(len(X.columns))
             model = Model.create_model(
                 X_train_np, y_train_np, X_val_np, y_val_np, 
-                learning_rate=learning_rate, extra_weight=class_weight,
+                learning_rate=learning_rate, class_weight=class_weight,
                 iterations=epochs, threshold_method='F1'
             )
 
@@ -295,17 +295,17 @@ class FeatureTracker:
             if cols_to_test is not None:
                 for c in cols_to_test: 
                     colToAdd, isToScale = self.getFeature(c)
-                    featureTester.restore(c, isToScale=isToScale)
+                    featureTester.restore(c, is_to_scale=isToScale)
                     X = featureTester.flush_to_df()
 
-                    X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(toNpy=True)
+                    X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
                     
                     print(f'|----- {c} -----|')
                     #print(len(X.columns))
                     
                     model = Model.create_model(
                         X_train_np, y_train_np, X_val_np, y_val_np, 
-                        learning_rate=learning_rate, extra_weight=class_weight,
+                        learning_rate=learning_rate, class_weight=class_weight,
                         iterations=epochs, threshold_method='F1'
                     )
 
