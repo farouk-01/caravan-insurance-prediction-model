@@ -44,7 +44,7 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     db = np.sum(extra_weight * (p-y)) / np.sum(extra_weight) #on divise par weights car c sa la formule (pcq ta besoin du average)
     return dw, db
 
-def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=200, min_delta=1e-6, iterations=1000, extra_weight=1, 
+def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=200, min_delta=1e-6, iterations=1000, class_weight=1, 
                         to_print=True, return_costs=False, l2_reg=False, l1_reg=False, lambda_const=None, 
                         return_weight_history=False, return_gradient_history=False):
     if l2_reg and lambda_const is None:
@@ -54,7 +54,7 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
     w = np.zeros(n) #array of n zeros, on init les weights
     b = 0 #learned bias
 
-    weights = np.where(y_train==1, extra_weight, 1)
+    weights = np.where(y_train==1, class_weight, 1)
     train_cost_list = []
     val_cost_list = []
 
@@ -190,7 +190,7 @@ def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rat
         inter_name = f"{comb[0]}_x_{comb[1]}"
         X_interaction[inter_name] = X_interaction[comb[0]] * X_interaction[comb[1]]
         X_interaction = X_interaction.to_numpy()
-        w,b = logistic_regression(X_interaction, y, learning_rate=learning_rate, extra_weight=ratio, to_print=False)
+        w,b = logistic_regression(X_interaction, y, learning_rate=learning_rate, class_weight=ratio, to_print=False)
         y_pred_new = predict_probas(X_interaction, w, b)
         new_auc = roc_auc_score(y, y_pred_new)
         print(f"Interaction {inter_name} : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
@@ -205,31 +205,42 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, l1_reg=False, to_print=False, **kwargs):
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, 
+                     l1_reg=False, to_print=False, t_opt_by_f1=False, best_thresh=0.5, **kwargs):
     best_lambda = None
     best_f1 = 0
-    best_thresh = 0.5
+    best_recall = 0
+    best_thresh = best_thresh
 
     l2_reg = not l1_reg
 
     for lam in lambdas:
-        w, b = logistic_regression(X_train, y_train, X_val, y_val, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lam, to_print=to_print, extra_weight=extra_weight, **kwargs)
-        t_opt, f1_opt = f1_score_threshold(
-            X_val, y_val, w, b,
-            step=step,
-            to_print=False
-        )
+        w, b = logistic_regression(X_train, y_train, X_val, y_val, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lam, to_print=to_print, class_weight=extra_weight, **kwargs)
+        if t_opt_by_f1:
+            t_opt, f1 = f1_score_threshold(
+                X_val, y_val, w, b,
+                step=step,
+                to_print=False
+            )
+            thresh_used = t_opt
+        else:
+            y_pred = predict(X_val, w, b, best_thresh)
+            f1 = f1_score(y_val, y_pred)
+            thresh_used = best_thresh
+        rec = recall_score(y_val, y_pred)
 
-        print(f"Lambda: {lam:.6f} | Best T: {t_opt:.3f} | F1: {f1_opt:.4f}")
+        print(f"best lambda={lam:.6f} | T={thresh_used:.3f} | F1={f1:.4f} | Recall={rec:.4f}")
 
-        if f1_opt > best_f1:
-            best_f1 = f1_opt
+        if f1 > best_f1:
+            best_f1 = f1
+            best_recall = rec
             best_lambda = lam
-            best_thresh = t_opt
+            best_thresh = thresh_used
 
     print("\nBest lambda:", best_lambda)
     print(f"Best threshold: {best_thresh:.3f}")
     print(f"Best F1: {best_f1:.4f}")
+    print(f"Best Recall: {best_recall:.4f}")
     return best_lambda
 
 def overfitting_test(model_old, X_test, model_new, X_test_final):
