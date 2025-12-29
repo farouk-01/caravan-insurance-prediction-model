@@ -45,7 +45,8 @@ def compute_gradients(X, y, w, b, extra_weight=None):
     return dw, db
 
 def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=0.01, patience=200, min_delta=1e-6, iterations=1000, extra_weight=1, 
-                        to_print=True, return_costs=False, l2_reg=False, l1_reg=False, lambda_const=None, return_weight_history=False):
+                        to_print=True, return_costs=False, l2_reg=False, l1_reg=False, lambda_const=None, 
+                        return_weight_history=False, return_gradient_history=False):
     if l2_reg and lambda_const is None:
         raise ValueError("besoin de lambda_const si l2_reg=True")
     
@@ -59,6 +60,9 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
 
     w_history = []
     b_history = []
+
+    dw_history = []
+    db_history = []
 
     best_val_loss = float('inf')
     patience_counter = 0
@@ -114,6 +118,8 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
         b -= learning_rate*db
         w_history.append(w.copy())
         b_history.append(b)
+        dw_history.append(dw)
+        db_history.append(db)
 
         if to_print and i % 100 == 0:
             val_info = f' | Val cos =  {val_cost:.4f}' if X_val is not None and y_val is not None else ''
@@ -130,6 +136,8 @@ def logistic_regression(X_train, y_train, X_val=None, y_val=None, learning_rate=
        results += (train_cost_list, val_cost_list)
     if return_weight_history:
         results += (w_history, b_history)
+    if return_gradient_history:
+        results += (dw_history, db_history)
     return results
 
 def predict_probas(X, w, b):
@@ -163,7 +171,6 @@ def print_model_stats(X, y, w, b, threshold=0.5, print_metrics=True):
         precision = precision_score(y, y_pred, zero_division=0)
         recall = recall_score(y, y_pred, zero_division=0)
 
-        
         auc = roc_auc_score(y, y_probas)
         #print('Accuracy: ', accuracy)
         print(f'AUC         : {auc:.4f}')
