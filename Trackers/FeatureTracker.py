@@ -199,15 +199,15 @@ class FeatureTracker:
         state_tracker.flush_to_df(returnDf=False)
         return state_tracker
 
-    def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, set_threshold_to=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
+    def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, threshold=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(to_np=True)
-        if threshold_method is not None: set_threshold_to=None
+        if threshold_method is not None: threshold=None
         model = Model.create_model(
             X_train_np, y_train_np, X_val_np, y_val_np, 
             learning_rate=learning_rate, class_weight=class_weight,
             iterations=iterations,
             threshold_method=threshold_method,
-            set_threshold_to=set_threshold_to,
+            threshold=threshold,
             **kwargs
         )
         if print_stats: model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)

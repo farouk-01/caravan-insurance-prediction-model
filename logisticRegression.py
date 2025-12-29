@@ -160,27 +160,28 @@ def get_youden_threshold(X, y, w, b):
     threshold, J_test = youden_index_threshold(y, y_proba_terms)
     return threshold
 
+def get_model_stats(X, y, w, b, threshold=0.5):
+    y_pred = predict(X, w, b, threshold)
+    y_probas = predict_probas(X, w, b)
+    return {
+        "auc": roc_auc_score(y, y_probas),
+        "precision": precision_score(y, y_pred, zero_division=0),
+        "recall": recall_score(y, y_pred, zero_division=0),
+        "f1": f1_score(y, y_pred, zero_division=0),
+        "threshold": threshold,
+        "confusion_matrix": confusion_matrix(y, y_pred),
+    }
+    
 def print_model_stats(X, y, w, b, threshold=0.5, print_metrics=True):
-    y_prediction = predict(X, w, b, threshold) #Rappel : thresholded -> accuracy et conf matrix
-    #accuracy = np.mean(y_prediction == y)
-    conf_matrix = confusion_matrix(y, y_prediction)
+    stats = get_model_stats(X, y, w, b, threshold)
     if print_metrics:
-        y_probas = predict_probas(X, w, b)
-        y_pred = predict(X,w,b, threshold)
-        f1 = f1_score(y, y_pred)
-        precision = precision_score(y, y_pred, zero_division=0)
-        recall = recall_score(y, y_pred, zero_division=0)
+        print(f"AUC         : {stats['auc']:.4f}")
+        print(f"Precision   : {stats['precision']:.4f}")
+        print(f"Recall      : {stats['recall']:.4f}")
+        print(f"F1          : {stats['f1']:.4f}")
+    print(f"Threshold   : {stats['threshold']:.4f}")
+    print(stats["confusion_matrix"])
 
-        auc = roc_auc_score(y, y_probas)
-        #print('Accuracy: ', accuracy)
-        print(f'AUC         : {auc:.4f}')
-        print(f'Precision   : {precision:.4f}')
-        print(f'Recall      : {recall:.4f}' )
-        print(f'F1          : {f1:.4f}')
-    print(f'Threshold   : {threshold:.4f}')
-    print(conf_matrix)
-
-        
 def interactions_terms_tester(X_old, y, w_old, b_old, vars_to_test, learning_rate, ratio):
     y_probas = predict_probas(X_old, w_old, b_old)
     auc_base = roc_auc_score(y, y_probas)
@@ -205,7 +206,7 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
     new_auc = get_auc_score(X_new, y, curr_model.w, curr_model.b)
     print(f"New X : AUC = {new_auc:.4f} (gain = {new_auc - auc_base:+.4f})")
 
-def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, step=0.01, 
+def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, class_weight=1, step=0.01, 
                      l1_reg=False, to_print=False, t_opt_by_f1=False, best_thresh=0.5, **kwargs):
     best_lambda = None
     best_f1 = 0
@@ -214,8 +215,11 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, st
 
     l2_reg = not l1_reg
 
+    def _fmt(x, max_dec=6):
+        return f"{x:.{max_dec}f}".rstrip("0").rstrip(".")
+
     for lam in lambdas:
-        w, b = logistic_regression(X_train, y_train, X_val, y_val, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lam, to_print=to_print, class_weight=extra_weight, **kwargs)
+        w, b = logistic_regression(X_train, y_train, X_val, y_val, l2_reg=l2_reg, l1_reg=l1_reg, lambda_const=lam, to_print=to_print, class_weight=class_weight, **kwargs)
         if t_opt_by_f1:
             t_opt, f1 = f1_score_threshold(
                 X_val, y_val, w, b,
@@ -229,7 +233,7 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, extra_weight=1, st
             thresh_used = best_thresh
         rec = recall_score(y_val, y_pred)
 
-        print(f"best lambda={lam:.6f} | T={thresh_used:.3f} | F1={f1:.4f} | Recall={rec:.4f}")
+        print(f"lambda={_fmt(lam)} | T={thresh_used:.3f} | F1={f1:.4f} | Recall={rec:.4f}")
 
         if f1 > best_f1:
             best_f1 = f1

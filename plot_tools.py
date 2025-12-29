@@ -132,8 +132,6 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plot_f1
             ax2.scatter(best_lr, best_recall, s=80, color='tab:purple',
                         label=f'Recall au best f1: {best_recall:.4f}')
 
-
-
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
