@@ -46,25 +46,36 @@ def plot_weights_effects(X_train, y_train, X_val, y_val, threshold, weights_to_t
 
 
 
-def plot_threshold_metrics(model, X, y, step=0.01):
-    thresholds = np.arange(0,1 + step ,step)
+def plot_threshold_metrics(model, feature_tracker, step=0.01,  range_min=0, range_max=1, plot_only_recall=True):
+    thresholds = np.arange(range_min, range_max + step ,step)
     f1_scores = []
     precision_scores = []
     recall_scores = []
+    X_train, y_train, X, y = feature_tracker.return_split_train_eval()
 
-    for t in thresholds:
-        y_pred = logReg.predict(X, model.w, model.b, t)
-        f1_scores.append(f1_score(y, y_pred))
-        precision_scores.append(precision_score(y, y_pred, zero_division=0))
-        recall_scores.append(recall_score(y, y_pred, zero_division=0))
+    if plot_only_recall:
+        for t in thresholds:
+            y_pred = logReg.predict(X, model.w, model.b, t)
+            recall_scores.append(recall_score(y, y_pred, zero_division=0))
+        plt.figure(figsize=(8,5))
+        plt.plot(thresholds, recall_scores, label="Recall", color="red")
+        plt.title("Threshold vs Recall")
+    else:
+        for t in thresholds:
+            y_pred = logReg.predict(X, model.w, model.b, t)
+            f1_scores.append(f1_score(y, y_pred))
+            #precision_scores.append(precision_score(y, y_pred, zero_division=0))
+            recall_scores.append(recall_score(y, y_pred, zero_division=0))
+        plt.figure(figsize=(8,5))
+        plt.plot(thresholds, f1_scores, label="F1 Score", color="blue")
+        #plt.plot(thresholds, precision_scores, label="Precision", color="green")
+        plt.plot(thresholds, recall_scores, label="Recall", color="red")
+        plt.title("Threshold vs F1 / Recall")
 
-    plt.figure(figsize=(8,5))
-    plt.plot(thresholds, f1_scores, label="F1 Score", color="blue")
-    plt.plot(thresholds, precision_scores, label="Precision", color="green")
-    plt.plot(thresholds, recall_scores, label="Recall", color="red")
+    
     plt.xlabel("Threshold")
     plt.ylabel("Score")
-    plt.title("Threshold vs F1 / Precision / Recall")
+    
     plt.legend()
     plt.grid(True)
     plt.show()

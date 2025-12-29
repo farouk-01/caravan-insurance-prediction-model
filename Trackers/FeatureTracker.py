@@ -343,6 +343,10 @@ class FeatureTracker:
 
         feature_eval_tracker.add('avg_area_income',  weighted_somme / total, toScale=True)
         feature_eval_tracker.add('PPERSAUTx_is_PBRAND_3_4',((df_eval["PPERSAUT"])*(df_eval['PBRAND'].isin([3,4]))))
+        feature_eval_tracker.add('PPERSAUTxMHKOOP_geq_6',((df_eval["PPERSAUT"])*(df_eval['MHKOOP'] >= 6)))
+        feature_eval_tracker.add('PPERSAUTxis_low_no_religion_area', df_eval['PPERSAUT']*((df_eval['MGODGE'] <= 3).astype(int)))
+        feature_eval_tracker.add('is_PPERSAUT_6xMFALLEEN', ((df_eval['PPERSAUT'] == 6) * (df_eval['MFALLEEN'])).astype(int))
+        feature_eval_tracker.add('PPERSAUT_6xMKOOPKLA', ((df_eval["PPERSAUT"] == 6)*(df_eval['MHKOOP'])))
 
         return feature_eval_tracker
     
