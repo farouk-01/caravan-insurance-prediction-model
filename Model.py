@@ -62,8 +62,6 @@ class Model:
         
         return self.make_conf_matrix(X, y, threshold=threshold)
     
-
-
 def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=1000, class_weight=1, improvement="", 
                  threshold_method=None, threshold=None, l2_reg=False, l1_reg=False, lambda_const=None, to_print=False, score_f1 = None):
     w, b = logisticRegression.logistic_regression(
@@ -78,5 +76,5 @@ def create_model(X_train, y_train,X_val, y_val, learning_rate=0.001, iterations=
     elif threshold_method == "Youden":
         threshold = logisticRegression.get_youden_threshold(X_val, y_val, w, b)
     else: threshold = 0.1
-    model = Model(w, b, threshold, improvement=improvement, score_f1=score_f1)
+    model = Model(w, b, threshold, improvement=improvement, score_f1=score_f1, X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
     return model
