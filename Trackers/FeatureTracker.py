@@ -128,12 +128,7 @@ class FeatureTracker:
                 X_val = X_val.copy()
                 X_train = data_info.fit_transform(X_train, cols_in_df_to_scale)
                 X_val = data_info.transform(X_val, cols_in_df_to_scale)
-            # for var in self.cols_to_scale:
-            #     if var in X_train_cols:
-            #         scaler.fit(X_train[[var]])
-            #         X_train[[var]] = scaler.transform(X_train[[var]])
-            #         X_val[[var]] = scaler.transform(X_val[[var]])
-        
+
         if to_np:
             X_train = X_train.to_numpy()
             X_val = X_val.to_numpy()
@@ -200,10 +195,11 @@ class FeatureTracker:
         return state_tracker
 
     def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, threshold=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
+        cols = self.df.drop("CARAVAN", axis=1).columns
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(to_np=True)
         if threshold_method is not None: threshold=None
         model = Model.create_model(
-            X_train_np, y_train_np, X_val_np, y_val_np, 
+            X_train_np, y_train_np, X_val_np, y_val_np, cols=cols,
             learning_rate=learning_rate, class_weight=class_weight,
             iterations=iterations,
             threshold_method=threshold_method,
@@ -314,14 +310,14 @@ class FeatureTracker:
                     print()
                     featureTester.remove(c)
     
-    def make_eval_tracker(self):
+    def make_eval_tracker(self, cols, model_num=0):
         df_eval = data.get_eval_data()
         categorical_non_ordinales = ['MOSTYPE', 'MOSHOOFD']
         df_eval = pd.get_dummies(df_eval, columns=categorical_non_ordinales, prefix=categorical_non_ordinales, dtype=int, drop_first=True)
 
         feature_eval_tracker = FeatureTracker(df_eval)
         feature_eval_tracker.to_remove_cols = self.to_remove_cols.copy()
-        feature_eval_tracker.cols_to_scale = self.cols_to_scale.copy()
+        feature_eval_tracker.cols_to_scale = [c for c in self.cols_to_scale if c in cols]
 
         income_brackets_midpoints = {
             'MINKM30': 15000,    
@@ -348,11 +344,34 @@ class FeatureTracker:
         feature_eval_tracker.add('is_PPERSAUT_6xMFALLEEN', ((df_eval['PPERSAUT'] == 6) * (df_eval['MFALLEEN'])).astype(int))
         feature_eval_tracker.add('PPERSAUT_6xMKOOPKLA', ((df_eval["PPERSAUT"] == 6)*(df_eval['MHKOOP'])))
 
+        if model_num >= 1:
+            life_accidents_health = np.array(['ALEVEN','APERSONG','AGEZONG','AWAOREG','ABRAND','ABYSTAND'])
+            third_party_insurance = np.array(['AWAPART','AWABEDR','AWALAND'])
+            daily_vehicle = np.array(['APERSAUT','AMOTSCO','ABROM'])
+            work_heavy_vehicle = np.array(['AVRAAUT','ATRACTOR','AWERKT','AAANHANG','ABESAUT'])
+            property_insurance = np.array(['AINBOED'])
+            leisure_vehicle = np.array(['APLEZIER','AFIETS','AZEILPL'])
+
+            all_policies = np.concatenate([life_accidents_health, third_party_insurance, daily_vehicle, work_heavy_vehicle, property_insurance, leisure_vehicle])
+
+            feature_eval_tracker.add('total_life_health_policies', df_eval[life_accidents_health].sum(axis=1), toScale=True)
+            feature_eval_tracker.add('total_third_party_policies', df_eval[third_party_insurance].sum(axis=1), toScale=True)
+            feature_eval_tracker.add('total_daily_vehicle_policies', df_eval[daily_vehicle].sum(axis=1), toScale=True)
+            feature_eval_tracker.add('total_work_heavy_vehicle_policies', df_eval[work_heavy_vehicle].sum(axis=1), toScale=True)
+            feature_eval_tracker.add('total_property_policies', df_eval[property_insurance].sum(axis=1), toScale=True)
+            feature_eval_tracker.add('total_leisure_vehicle_policies', df_eval[leisure_vehicle].sum(axis=1), toScale=True)
+
+        if model_num >= 2:
+            feature_eval_tracker.add('total_policies', df_eval[all_policies].sum(axis=1), toScale=True)
+
+            
+        if model_num >= 1: feature_eval_tracker.remove_list(all_policies)
+
         return feature_eval_tracker
     
-    def make_split_eval_data(self):
-        eval_tracker = self.make_eval_tracker()
-        X = eval_tracker.flush_to_df()
+    def make_split_eval_data(self, cols, model_num=0):
+        eval_tracker = self.make_eval_tracker(cols, model_num=model_num)
+        X = eval_tracker.flush_to_df() #CARAVAN n'est pas une col de eval data
         cols_to_scale = eval_tracker.cols_to_scale
         data_info = data.DataInfo.get_instance()
         cols_in_df_to_scale = [c for c in cols_to_scale if c in X.columns]
@@ -360,4 +379,5 @@ class FeatureTracker:
             X = X.copy()
             X = data_info.transform(X, cols_in_df_to_scale)
         y = data.get_eval_targets()
+        X = X.reindex(columns=cols)
         return X, y
