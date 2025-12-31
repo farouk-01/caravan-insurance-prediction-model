@@ -100,17 +100,40 @@ def print_table_side_by_side(dfs):
     html += "</tr></table>"
     return HTML(html)
 
-def print_model_comparator(model1, model2, display_to_md=True):
-    stats1 = logisticRegression.get_model_stats(
-        model1.X_val, model1.y_val,
-        model1.w, model1.b,
-        model1.threshold
-    )
-    stats2 = logisticRegression.get_model_stats(
-        model2.X_val, model2.y_val,
-        model2.w, model2.b,
-        model2.threshold
-    )
+def print_model_comparator(model1, model2, display_to_md=True, of_eval_set=False, of_train_set=False):
+    if of_eval_set:
+        stats1 = logisticRegression.get_model_stats(
+            model1.X_eval, model1.y_eval,
+            model1.w, model1.b,
+            model1.threshold
+        )
+        stats2 = logisticRegression.get_model_stats(
+            model2.X_eval, model2.y_eval,
+            model2.w, model2.b,
+            model2.threshold
+        )
+    elif of_train_set:
+        stats1 = logisticRegression.get_model_stats(
+            model1.X_train, model1.y_train,
+            model1.w, model1.b,
+            model1.threshold
+        )
+        stats2 = logisticRegression.get_model_stats(
+            model2.X_train, model2.y_train,
+            model2.w, model2.b,
+            model2.threshold
+        )
+    else:
+        stats1 = logisticRegression.get_model_stats(
+            model1.X_val, model1.y_val,
+            model1.w, model1.b,
+            model1.threshold
+        )
+        stats2 = logisticRegression.get_model_stats(
+            model2.X_val, model2.y_val,
+            model2.w, model2.b,
+            model2.threshold
+        )
 
     cm1 = stats1["confusion_matrix"]
     cm2 = stats2["confusion_matrix"]
