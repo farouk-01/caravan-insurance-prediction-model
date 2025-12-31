@@ -6,6 +6,7 @@ class ModelConfig:
     threshold:float = 0.1
     class_weight:Optional[float] = None
     learning_rate:float = 0.01
+    iterations:int = 1000
     l2_reg:bool = False
     l1_reg:bool = False
     lambda_const:Optional[float] = None

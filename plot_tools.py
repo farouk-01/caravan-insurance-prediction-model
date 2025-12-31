@@ -80,7 +80,7 @@ def plot_threshold_metrics(model, feature_tracker, step=0.01,  range_min=0, rang
     plt.grid(True)
     plt.show()
 
-def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plot_f1=False, to_print=False, to_plot=False, plot_recall=False, **kwargs):
+def lr_grid_search(X_train, y_train, X_val, y_val, lrs, threshold=0.5, iterations=1000, plot_f1=False, to_print=False, to_plot=False, plot_recall=False, **kwargs):
     val_losses = []
     f1_scores = []
     recall_scores = []
@@ -97,7 +97,7 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, iterations=1000, plot_f1
         )
         val_losses.append(val_costs[-1])
 
-        val_pred = logReg.predict(X_val, w, b, 0.5)
+        val_pred = logReg.predict(X_val, w, b, threshold)
         f1_scores.append(f1_score(y_val, val_pred, zero_division=0))
         recall_scores.append(recall_score(y_val, val_pred, zero_division=0))
 
@@ -153,7 +153,7 @@ def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, 
     iterations = range(1, epochs_max + 1)
 
     plt.figure(figsize=(10, 6))
-    #plt.plot(iterations, train_costs, label='Training Loss', color='blue')
+    plt.plot(iterations, train_costs, label='Training Loss', color='blue')
     plt.plot(iterations, val_costs, label='Validation Loss', color='red')
     
     plt.title(f'Convergence du Modele (LR={learning_rate:.6f})')

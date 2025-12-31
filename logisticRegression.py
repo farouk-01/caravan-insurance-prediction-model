@@ -208,10 +208,14 @@ def compare_auc_score(X_old, y, X_new, prev_model, curr_model):
 
 def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, class_weight=1, step=0.01, 
                      l1_reg=False, to_print=False, t_opt_by_f1=False, best_thresh=0.5, **kwargs):
-    best_lambda = None
+    best_lambda_f1 = None
     best_f1 = 0
-    best_recall = 0
+    best_recall_of_best_f1 = 0
     best_thresh = best_thresh
+
+    best_lambda_recall = None
+    best_recall = 0
+    best_f1_of_best_recall = 0
 
     l2_reg = not l1_reg
 
@@ -237,14 +241,22 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, class_weight=1, st
 
         if f1 > best_f1:
             best_f1 = f1
-            best_recall = rec
+            best_recall_of_best_f1 = rec
             best_lambda = lam
             best_thresh = thresh_used
+        
+        if rec > best_recall:
+            best_recall = rec
+            best_lambda_recall = lam
+            best_f1_of_best_recall = f1
 
-    print("\nBest lambda:", best_lambda)
+    print("\nBest lambda (F1):", best_lambda)
     print(f"Best threshold: {best_thresh:.3f}")
     print(f"Best F1: {best_f1:.4f}")
-    print(f"Best Recall: {best_recall:.4f}")
+    print(f"Recall: {best_recall_of_best_f1:.4f}")
+    print(f"\nBest lambda (Recall): {best_lambda_recall}")
+    print(f"Best Recall : {best_recall:.4f}")
+    print(f"F1 : {best_f1_of_best_recall:.4f}")
     return best_lambda
 
 def overfitting_test(model_old, X_test, model_new, X_test_final):
