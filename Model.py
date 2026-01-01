@@ -20,6 +20,9 @@ class Model:
         self.y_train = y_train
         self.X_val = X_val
         self.y_val = y_val
+
+        self.X_eval = None
+        self.y_eval = None
     
     def __repr__(self):
         if self.X_val is None or self.y_val is None:
@@ -55,8 +58,8 @@ class Model:
         elif not return_df: 
             print(f"Top {k} contient:         {int(y[order].sum())} positifs")
     
-    def top_k_caravan_policy_owners_after(self, start=233, window=50, on_train_set=False, return_df=False):
-        if on_train_set: X = self.X_train; y = self.y_train; start = 931; window = 500
+    def top_k_caravan_policy_owners_after(self, start=233, window=20, on_train_set=False, return_df=False):
+        if on_train_set: X = self.X_train; y = self.y_train; start = 931; window = 200
         else: X = self.X_val; y = self.y_val
 
         p = self.predict_probas(X)
@@ -76,7 +79,11 @@ class Model:
         
         elif not return_df:
             print(res)
-    
+
+    def top_k_eval_final(self, k=800):
+        p = self.predict_probas(self.X_eval)
+        top_k_idx = np.argsort(p)[-k:]
+        return int(self.y_eval.iloc[top_k_idx].to_numpy().sum())
 
     def print_train_stats(self, threshold=None, print_metrics=False):
         if self.X_train is None or self.y_train is None: raise ValueError("pls set train set")

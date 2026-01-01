@@ -194,7 +194,8 @@ class FeatureTracker:
         state_tracker.flush_to_df(returnDf=False)
         return state_tracker
 
-    def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, threshold=0.1, threshold_method=None, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
+    def get_trained_model(self, learning_rate=0.01, iterations=1000, class_weight=1, threshold=0.1, threshold_method=None, 
+                          print_top_k=False, print_stats=True, returnModel=True, print_metrics=False, **kwargs):
         cols = self.df.drop("CARAVAN", axis=1).columns
         X_train_np, y_train_np, X_val_np, y_val_np = self.return_split_train_eval(to_np=True)
         if threshold_method is not None: threshold=None
@@ -207,10 +208,11 @@ class FeatureTracker:
             **kwargs
         )
         if print_stats: model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+        if print_top_k: (model.top_k_caravan_policy_owners())
         if returnModel: return model
     
     def feature_comparator(self, X, base_extra_cols=None, cols_to_test=None, cols_to_remove=None, add_inter_terms=True,
-                           test_on_train=False,
+                           test_on_train=False, test_base=True,
                             learning_rate=0.01, epochs=1000, class_weight=1, print_metrics=True, **kwargs):
         self.remove_list(cols_to_test)
         featureTester = FeatureTracker(X)
@@ -229,20 +231,21 @@ class FeatureTracker:
         
         X = featureTester.flush_to_df()
         
+        if test_base:
+            X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
+            print(f'|----- Variable de base -----|')
 
-        X_train_np, y_train_np, X_val_np, y_val_np = featureTester.return_split_train_eval(to_np=True)
-        print(f'|----- Variable de base -----|')
+            model = Model.create_model(
+                X_train_np, y_train_np, X_val_np, y_val_np, 
+                learning_rate=learning_rate, class_weight=class_weight,
+                iterations=epochs, **kwargs
+            )
 
-        #threshold_method='F1' removed
-        model = Model.create_model(
-            X_train_np, y_train_np, X_val_np, y_val_np, 
-            learning_rate=learning_rate, class_weight=class_weight,
-            iterations=epochs, **kwargs
-        )
-
-        if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
-        else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
-        print()
+            if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
+            else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+            # (model.top_k_caravan_policy_owners(on_train_set=test_on_train))
+            # (model.top_k_caravan_policy_owners_after(on_train_set=test_on_train))
+            print()
 
         if cols_to_test is not None:
             for c in cols_to_test: 
@@ -265,6 +268,8 @@ class FeatureTracker:
 
                 if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
                 else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+                # (model.top_k_caravan_policy_owners(on_train_set=test_on_train))
+                # (model.top_k_caravan_policy_owners_after(on_train_set=test_on_train))
                 print()
                 featureTester.remove(c)
 
@@ -286,6 +291,8 @@ class FeatureTracker:
 
             if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
             else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+            # (model.top_k_caravan_policy_owners(on_train_set=test_on_train))
+            # (model.top_k_caravan_policy_owners_after(on_train_set=test_on_train))
             print()
             
             if cols_to_test is not None:
@@ -307,10 +314,12 @@ class FeatureTracker:
 
                     if test_on_train : model.print_stats(X_train_np, y_train_np, print_metrics=print_metrics)
                     else : model.print_stats(X_val_np, y_val_np, print_metrics=print_metrics)
+                    # (model.top_k_caravan_policy_owners(on_train_set=test_on_train))
+                    # (model.top_k_caravan_policy_owners_after(on_train_set=test_on_train))
                     print()
                     featureTester.remove(c)
     
-    def make_eval_tracker(self, cols, model_num=0):
+    def make_eval_tracker(self, cols):
         df_eval = data.get_eval_data()
         categorical_non_ordinales = ['MOSTYPE', 'MOSHOOFD']
         df_eval = pd.get_dummies(df_eval, columns=categorical_non_ordinales, prefix=categorical_non_ordinales, dtype=int, drop_first=True)
@@ -319,58 +328,38 @@ class FeatureTracker:
         feature_eval_tracker.to_remove_cols = self.to_remove_cols.copy()
         feature_eval_tracker.cols_to_scale = [c for c in self.cols_to_scale if c in cols]
 
-        income_brackets_midpoints = {
-            'MINKM30': 15000,    
-            'MINK3045': 37500,   
-            'MINK4575': 60000,   
-            'MINK7512': 98500,   
-            'MINK123M': 180000 
-        }
-
-        income_cols = list(income_brackets_midpoints.keys())
-        weighted_somme = 0
-        for col in income_cols:
-            weighted_somme += df_eval[col] * income_brackets_midpoints[col]
-        total = df_eval[income_cols].sum(axis=1)
-
-        for c in income_cols:
-            feature_eval_tracker.remove(c)
-        feature_eval_tracker.remove('MINKGEM')
-
-        feature_eval_tracker.add('avg_area_income',  weighted_somme / total, toScale=True)
         feature_eval_tracker.add('PPERSAUTx_is_PBRAND_3_4',((df_eval["PPERSAUT"])*(df_eval['PBRAND'].isin([3,4]))))
+
+        income_cols = ['MINKM3045', 'MINK4575', 'MINK7512', 'MINK123M', 'MINKGEM']
+        feature_eval_tracker.restore_list(income_cols)
+
         feature_eval_tracker.add('PPERSAUTxMHKOOP_geq_6',((df_eval["PPERSAUT"])*(df_eval['MHKOOP'] >= 6)))
         feature_eval_tracker.add('PPERSAUTxis_low_no_religion_area', df_eval['PPERSAUT']*((df_eval['MGODGE'] <= 3).astype(int)))
         feature_eval_tracker.add('is_PPERSAUT_6xMFALLEEN', ((df_eval['PPERSAUT'] == 6) * (df_eval['MFALLEEN'])).astype(int))
         feature_eval_tracker.add('PPERSAUT_6xMKOOPKLA', ((df_eval["PPERSAUT"] == 6)*(df_eval['MHKOOP'])))
 
-        if model_num >= 1:
-            life_accidents_health = np.array(['ALEVEN','APERSONG','AGEZONG','AWAOREG','ABRAND','ABYSTAND'])
-            third_party_insurance = np.array(['AWAPART','AWABEDR','AWALAND'])
-            daily_vehicle = np.array(['APERSAUT','AMOTSCO','ABROM'])
-            work_heavy_vehicle = np.array(['AVRAAUT','ATRACTOR','AWERKT','AAANHANG','ABESAUT'])
-            property_insurance = np.array(['AINBOED'])
-            leisure_vehicle = np.array(['APLEZIER','AFIETS','AZEILPL'])
+        life_accidents_health = np.array(['ALEVEN','APERSONG','AGEZONG','AWAOREG','ABRAND','ABYSTAND'])
+        third_party_insurance = np.array(['AWAPART','AWABEDR','AWALAND'])
+        daily_vehicle = np.array(['APERSAUT','AMOTSCO','ABROM'])
+        work_heavy_vehicle = np.array(['AVRAAUT','ATRACTOR','AWERKT','AAANHANG','ABESAUT'])
+        property_insurance = np.array(['AINBOED'])
+        leisure_vehicle = np.array(['APLEZIER','AFIETS','AZEILPL'])
 
-            all_policies = np.concatenate([life_accidents_health, third_party_insurance, daily_vehicle, work_heavy_vehicle, property_insurance, leisure_vehicle])
+        all_policies = np.concatenate([life_accidents_health, third_party_insurance, daily_vehicle, work_heavy_vehicle, property_insurance, leisure_vehicle])
 
-            feature_eval_tracker.add('total_life_health_policies', df_eval[life_accidents_health].sum(axis=1), toScale=True)
-            feature_eval_tracker.add('total_third_party_policies', df_eval[third_party_insurance].sum(axis=1), toScale=True)
-            feature_eval_tracker.add('total_daily_vehicle_policies', df_eval[daily_vehicle].sum(axis=1), toScale=True)
-            feature_eval_tracker.add('total_work_heavy_vehicle_policies', df_eval[work_heavy_vehicle].sum(axis=1), toScale=True)
-            feature_eval_tracker.add('total_property_policies', df_eval[property_insurance].sum(axis=1), toScale=True)
-            feature_eval_tracker.add('total_leisure_vehicle_policies', df_eval[leisure_vehicle].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_life_health_policies', df_eval[life_accidents_health].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_third_party_policies', df_eval[third_party_insurance].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_daily_vehicle_policies', df_eval[daily_vehicle].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_work_heavy_vehicle_policies', df_eval[work_heavy_vehicle].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_property_policies', df_eval[property_insurance].sum(axis=1), toScale=True)
+        feature_eval_tracker.add('total_leisure_vehicle_policies', df_eval[leisure_vehicle].sum(axis=1), toScale=True)
 
-        if model_num >= 2:
-            feature_eval_tracker.add('total_policies', df_eval[all_policies].sum(axis=1), toScale=True)
-
-            
-        if model_num >= 1: feature_eval_tracker.remove_list(all_policies)
+        feature_eval_tracker.remove_list(all_policies)
 
         return feature_eval_tracker
     
-    def make_split_eval_data(self, cols, model_num=0):
-        eval_tracker = self.make_eval_tracker(cols, model_num=model_num)
+    def make_split_eval_data(self, cols):
+        eval_tracker = self.make_eval_tracker(cols)
         X = eval_tracker.flush_to_df() #CARAVAN n'est pas une col de eval data
         cols_to_scale = eval_tracker.cols_to_scale
         data_info = data.DataInfo.get_instance()

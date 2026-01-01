@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import logisticRegression as logReg
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.metrics import f1_score, precision_score, recall_score, precision_recall_curve
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -66,7 +66,6 @@ def plot_threshold_metrics(model, feature_tracker, step=0.01,  range_min=0, rang
             f1_scores.append(f1_score(y, y_pred))
             #precision_scores.append(precision_score(y, y_pred, zero_division=0))
             recall_scores.append(recall_score(y, y_pred, zero_division=0))
-        plt.figure(figsize=(8,5))
         plt.plot(thresholds, f1_scores, label="F1 Score", color="blue")
         #plt.plot(thresholds, precision_scores, label="Precision", color="green")
         plt.plot(thresholds, recall_scores, label="Recall", color="red")
@@ -152,7 +151,6 @@ def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, 
     )
     iterations = range(1, epochs_max + 1)
 
-    plt.figure(figsize=(10, 6))
     plt.plot(iterations, train_costs, label='Training Loss', color='blue')
     plt.plot(iterations, val_costs, label='Validation Loss', color='red')
     
@@ -293,7 +291,7 @@ def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP
     
     X_cat = pd.get_dummies(df_plot[cat_cols], drop_first=False)
 
-    if num_cols is not None:
+    if num_cols is not None and len(num_cols) > 0:
         X_num = df_plot[num_cols].astype(float)
         X_num = pd.DataFrame(
             scaler.fit_transform(X_num),
@@ -413,3 +411,14 @@ def plot_LDA_all_groups(cols, df_profiles):
     plt.tight_layout()
 
     return loadings
+
+def plot_AUC_PR(model):
+    y_proba = model.predict_probas()
+    precision, recall, thresholds = precision_recall_curve(model.y_val, y_proba)
+    
+    plt.plot(recall, precision)
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall curve")
+    plt.grid(True)
+    plt.show()

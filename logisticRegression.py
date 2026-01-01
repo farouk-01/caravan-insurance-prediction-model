@@ -239,6 +239,7 @@ def find_best_lambda(lambdas, X_train, y_train, X_val, y_val, class_weight=1, st
 
         print(f"lambda={_fmt(lam)} | T={thresh_used:.3f} | F1={f1:.4f} | Recall={rec:.4f}")
 
+        #TODO si F1 similaire à best_f1 -> alors check si rec > best_recall
         if f1 > best_f1:
             best_f1 = f1
             best_recall_of_best_f1 = rec
