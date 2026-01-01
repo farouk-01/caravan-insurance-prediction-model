@@ -203,6 +203,8 @@ def or_with_ic(model, X_train, cols, printFull=False):
         '$bs_{OR}$': bs_or
     })
 
+    coef_df["feature"] = data.replace_values_by_name_desc(coef_df["feature"])
+
     coef_df = coef_df.round(4)
 
     mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
@@ -395,7 +397,6 @@ def compute_LD1(df_new, cols, lda, scaler, dummy_cols):
     X_scaled = scaler.transform(X)
     Z = lda.transform(X_scaled).ravel()
     return Z
-
 
 def print_df_analysis_html(df):
     def colorize_row(row):

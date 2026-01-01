@@ -2,6 +2,8 @@ import logisticRegression
 import copy
 from Trackers import FeatureTracker
 from sklearn.metrics import confusion_matrix
+import numpy as np
+import pandas as pd
 
 class Model:
     def __init__(self, w, b, threshold=0.5, name="",
@@ -18,9 +20,6 @@ class Model:
         self.y_train = y_train
         self.X_val = X_val
         self.y_val = y_val
-
-        self.X_eval = None
-        self.y_eval = None
     
     def __repr__(self):
         if self.X_val is None or self.y_val is None:
@@ -38,12 +37,46 @@ class Model:
         y_pred = logisticRegression.predict(X, self.w, self.b, self.threshold)
         return y_pred
     
-    def print_eval_stats(self, threshold=None, print_metrics=False):
-        if self.X_eval is None or self.y_eval is None: raise ValueError("pls set eval set")
+    #k = 233, car équivalent de 800/4000 -> 233/1165
+    def top_k_caravan_policy_owners(self, k=233, on_train_set=False, return_df=False):
+        if on_train_set: X = self.X_train; y = self.y_train; k=931
+        else: X = self.X_val; y = self.y_val
+        p = self.predict_probas(X)
+        order = np.argsort(p)[::-1][:k]
+        idx_pos = order[y[order] == 1]
 
-        if threshold is None: threshold = self.threshold
+        if on_train_set and return_df:
+            X = pd.DataFrame(X, columns=self.cols).copy()
+            df = X.iloc[idx_pos].copy()
+            df["proba"] = p[idx_pos]
 
-        self.print_stats(self.X_eval, self.y_eval, threshold=threshold, print_metrics=print_metrics)
+            return df.sort_values("proba", ascending=False)
+        
+        elif not return_df: 
+            print(f"Top {k} contient:         {int(y[order].sum())} positifs")
+    
+    def top_k_caravan_policy_owners_after(self, start=233, window=50, on_train_set=False, return_df=False):
+        if on_train_set: X = self.X_train; y = self.y_train; start = 931; window = 500
+        else: X = self.X_val; y = self.y_val
+
+        p = self.predict_probas(X)
+        end = start + window
+        order = np.argsort(p)[::-1][start:end]
+
+        idx_pos = order[y[order] == 1]
+
+        n_pos = int(y[idx_pos].sum())
+        res = f"\n[{start+1} a {end}] contient:     {n_pos} positifs"
+
+        if on_train_set and return_df:
+            X = pd.DataFrame(X, columns=self.cols).copy()
+            df = X.iloc[idx_pos].copy()
+            df["proba"] = p[idx_pos]
+            return df.sort_values("proba", ascending=False)
+        
+        elif not return_df:
+            print(res)
+    
 
     def print_train_stats(self, threshold=None, print_metrics=False):
         if self.X_train is None or self.y_train is None: raise ValueError("pls set train set")
@@ -71,7 +104,8 @@ class Model:
     def copy(self):
         return copy.deepcopy(self)
     
-    def predict_probas(self, X):
+    def predict_probas(self, X=None, on_train_set=False):
+        if X is None: X = self.X_val
         return logisticRegression.predict_probas(X, self.w, self.b)
     
     def make_conf_matrix(self, X, y, threshold=None):

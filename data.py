@@ -60,22 +60,37 @@ class DataInfo:
         if desc is None: return var
         return f"{var}_{desc}" if desc else var
 
-    def replace_by_name_desc(self, obj, vars=None):
-        desc_dict = self.get_desc_dict() if vars is None else self.get_dict_of(vars)
-        
-        if isinstance(obj, pd.Series):
-            if obj.index.name is not None: obj.rename_axis(self._get_new_label(obj.index.name, desc_dict), inplace=True)
-            return obj.rename(index={i: self._get_new_label(i, desc_dict) for i in obj.index})
-            
-        elif isinstance(obj, pd.DataFrame):
-            df = obj.copy()
-            df = df.rename(columns={c: self._get_new_label(c, desc_dict) for c in df.columns})
-            df = df.rename(index={i: self._get_new_label(i, desc_dict) for i in df.index})
-            return df
-        
-        raise TypeError("obj doit etre Series ou DataFrame")
+def replace_by_name_desc(obj, vars=None):
+    data_info = DataInfo.get_instance()
 
+    desc_dict = data_info.get_desc_dict() if vars is None else data_info.get_dict_of(vars)
+    
+    if isinstance(obj, pd.Series):
+        if obj.index.name is not None: obj.rename_axis(data_info._get_new_label(obj.index.name, desc_dict), inplace=True)
+        return obj.rename(index={i: data_info._get_new_label(i, desc_dict) for i in obj.index})
         
+    elif isinstance(obj, pd.DataFrame):
+        df = obj.copy()
+        df = df.rename(columns={c: data_info._get_new_label(c, desc_dict) for c in df.columns})
+        df = df.rename(index={i: data_info._get_new_label(i, desc_dict) for i in df.index})
+        return df
+    
+    raise TypeError("obj doit etre Series ou DataFrame")
+        
+def replace_values_by_name_desc(obj, vars=None):
+    data_info = DataInfo.get_instance()
+    desc_dict = data_info.get_desc_dict() if vars is None else data_info.get_dict_of(vars)
+
+    def _map_desc(v):
+        return data_info._get_new_label(v, desc_dict)
+
+    if isinstance(obj, pd.Series):
+        return obj.map(_map_desc)
+    
+    if isinstance(obj, pd.DataFrame):
+        return obj.map(_map_desc)
+    
+    raise TypeError("obj doit etre Series ou DataFrame")
 
 
 def read_dictionnary(df):
