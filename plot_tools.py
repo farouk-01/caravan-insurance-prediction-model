@@ -288,8 +288,13 @@ def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP
     df_plot = df_profiles[df_profiles["Group"].isin([var1,var2])].copy()
 
     scaler = StandardScaler()
-    
-    X_cat = pd.get_dummies(df_plot[cat_cols], drop_first=False)
+
+    cols_already_one_hot = [c for c in df_plot.columns if c.startswith(("MOSTYPE_", "MOSHOOFD_"))]
+    cat_cols_not_one_hot = [c for c in cat_cols if c not in cols_already_one_hot]
+
+    X_cat = pd.get_dummies(df_plot[cat_cols_not_one_hot].astype(int).astype("category"), drop_first=False)
+    X_cat = pd.concat([X_cat, df_plot[cols_already_one_hot].astype(int)], axis=1)
+
 
     if num_cols is not None and len(num_cols) > 0:
         X_num = df_plot[num_cols].astype(float)

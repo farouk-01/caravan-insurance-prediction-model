@@ -16,6 +16,9 @@ plot_catpca <- function(
   level <- rep("ordinal", ncol(df_x))
   names(level) <- colnames(df_x)
 
+  dummy_cols <- grepl("_[0-9]+$", names(level))
+  level[dummy_cols] <- "nominal"
+
   if (!is.null(num_cols) && length(num_cols) > 0) level[num_cols] <- "metric"
 
   fit_ord <- princals(df_x, ndim = ndim, levels = level)
