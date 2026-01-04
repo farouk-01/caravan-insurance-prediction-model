@@ -140,16 +140,16 @@ def lr_grid_search(X_train, y_train, X_val, y_val, lrs, threshold=0.5, iteration
         plt.show()
     return val_losses, f1_scores, recall_scores
 
-def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, to_print=False, **kwargs):
+def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, iterations, to_print=False, **kwargs):
     w, b, train_costs, val_costs = logReg.logistic_regression(
         X_train, y_train, X_val, y_val,
         learning_rate=learning_rate,
-        iterations=epochs_max,
+        iterations=iterations,
         return_costs=True,
         to_print=to_print,
         **kwargs 
     )
-    iterations = range(1, epochs_max + 1)
+    iterations = range(1, iterations + 1)
 
     plt.plot(iterations, train_costs, label='Training Loss', color='blue')
     plt.plot(iterations, val_costs, label='Validation Loss', color='red')
@@ -162,11 +162,11 @@ def plot_convergence(X_train, y_train, X_val, y_val, learning_rate, epochs_max, 
     plt.show()
 
 
-def train_val_accuracy_plot(X_train, y_train, X_val, y_val, learning_rate, epochs_max, **kwargs):
+def train_val_accuracy_plot(X_train, y_train, X_val, y_val, learning_rate, iterations, **kwargs):
     w, b, train_costs, val_costs, w_history, b_history = logReg.logistic_regression(
         X_train, y_train, X_val, y_val,
         learning_rate=learning_rate,
-        iterations=epochs_max,
+        iterations=iterations,
         return_costs=True,
         return_weight_history=True,
         **kwargs 
@@ -199,11 +199,11 @@ def train_val_accuracy_plot(X_train, y_train, X_val, y_val, learning_rate, epoch
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.show()
 
-def epochs_grid_search(X_train, y_train, X_val, y_val, epochs_list, learning_rate, **kwargs):
+def iters_grid_search(X_train, y_train, X_val, y_val, iters_list, learning_rate, **kwargs):
     val_losses = []
     f1_scores = []
 
-    for epoch in epochs_list:
+    for epoch in iters_list:
         w, b = logReg.logistic_regression(
             X_train, y_train,
             learning_rate=learning_rate,
@@ -217,13 +217,13 @@ def epochs_grid_search(X_train, y_train, X_val, y_val, epochs_list, learning_rat
 
     fig, ax1 = plt.subplots()
 
-    ax1.plot(epochs_list, val_losses, marker='o', color='tab:red', label='val loss')
+    ax1.plot(iters_list, val_losses, marker='o', color='tab:red', label='val loss')
     ax1.set_xlabel('epochs')
     ax1.set_ylabel('val loss', color='tab:red')
     ax1.tick_params(axis='y', labelcolor='tab:red')
 
     ax2 = ax1.twinx()
-    ax2.plot(epochs_list, f1_scores, marker='o', color='tab:blue', label='val F1')
+    ax2.plot(iters_list, f1_scores, marker='o', color='tab:blue', label='val F1')
     ax2.set_ylabel('val F1', color='tab:blue')
     ax2.tick_params(axis='y', labelcolor='tab:blue')
 
@@ -295,7 +295,6 @@ def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP
     X_cat = pd.get_dummies(df_plot[cat_cols_not_one_hot].astype(int).astype("category"), drop_first=False)
     X_cat = pd.concat([X_cat, df_plot[cols_already_one_hot].astype(int)], axis=1)
 
-
     if num_cols is not None and len(num_cols) > 0:
         X_num = df_plot[num_cols].astype(float)
         X_num = pd.DataFrame(
@@ -331,28 +330,30 @@ def plot_PCA(cat_cols, num_cols, df_profiles, return_plot=False, TP_FN=False, FP
         plt.show()
         return loadings
 
-def plot_LDA(categorie_cols, continue_cols, df_profiles, one_hot_cat=False, TP_FN=False, FP_FN=False, return_vars=False):
+def plot_LDA(cat_cols, num_cols, df_profiles, TP_FN=False, FP_FN=False, return_vars=False):
     var1, var2 = get_df_groups(TP_FN, FP_FN)
     df_plot = df_profiles[df_profiles["Group"].isin([var1, var2])].copy()
 
     scaler = StandardScaler()
-    
-    X_num = df_plot[continue_cols].astype(float)
-    X_num = pd.DataFrame(
-        scaler.fit_transform(X_num),
-        index = df_plot.index,
-        columns=continue_cols
-    )
 
-    if one_hot_cat: X_cat = pd.get_dummies(df_plot[categorie_cols], drop_first=False)
-    else:
-        X_cat = df_plot[categorie_cols].astype("Int64")
-        X_cat = pd.DataFrame(
-            scaler.fit_transform(X_cat),
-            index=df_plot.index,
-            columns=categorie_cols
+    cols_already_one_hot = [c for c in df_plot.columns if c.startswith(("MOSTYPE_", "MOSHOOFD_"))]
+    cat_cols_not_one_hot = [c for c in cat_cols if c not in cols_already_one_hot]
+
+    X_cat = pd.get_dummies(df_plot[cat_cols_not_one_hot].astype(int).astype("category"), drop_first=False)
+    X_cat = pd.concat([X_cat, df_plot[cols_already_one_hot].astype(int)], axis=1)
+    
+    if num_cols is not None and len(num_cols) > 0:
+        X_num = df_plot[num_cols].astype(float)
+        X_num = pd.DataFrame(
+            scaler.fit_transform(X_num),
+            index = df_plot.index,
+            columns=num_cols
         )
-    X = pd.concat([X_num, X_cat], axis=1)
+    
+        X = pd.concat([X_num, X_cat], axis=1)
+    else:
+        X = X_cat
+
     y = df_plot["Group"].values
 
     lda = LinearDiscriminantAnalysis(n_components=1)

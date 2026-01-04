@@ -15,7 +15,6 @@ def sigmoid(z):
         np.exp(z) / (1 + np.exp(z))
     )
 
-#aka loss function
 def cost_function(X, y, w, b, extra_weight=None):
     m = X.shape[0]
     if extra_weight is None:

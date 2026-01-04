@@ -1,6 +1,4 @@
-from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+from sklearn.feature_selection import mutual_info_classif
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
@@ -10,6 +8,7 @@ import pandas as pd
 import scipy.stats as st
 import logisticRegression
 import data
+from IPython.display import Markdown
 
 def make_mi_scores(X, y, discrete_features):
     #Beware not to use a regression scoring function with a classification problem, you will get useless results.
@@ -174,7 +173,10 @@ def get_constant_and_rare_cols(coef_df, X_train, y_train, huge=1e10):
             print('what?', c)
     return cols_with_zeros_targets, cols_with_all_targets, cols_with_rare_outcomes
 
-def or_with_ic(model, X_train, cols, printFull=False):
+def or_with_ic(model, get_full=False, as_markdown=True):
+    X_train = model.X_train.copy()
+    cols = model.cols
+
     coeff = model.w 
     bias = model.b 
     odds_ratio = np.exp(coeff) 
@@ -208,8 +210,12 @@ def or_with_ic(model, X_train, cols, printFull=False):
     coef_df = coef_df.round(4)
 
     mask_signif = (coef_df['$bi_{OR}$'] > 1) | (coef_df['$bs_{OR}$'] < 1)
-    if printFull: return (coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
-    return (coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown())
+    if as_markdown:
+        if get_full: return Markdown(coef_df.sort_values(by='$OR$', key=abs, ascending=False).to_markdown())
+        return Markdown((coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False).to_markdown()))
+    else:
+        if get_full: (coef_df.sort_values(by='$OR$', key=abs, ascending=False))
+        return (coef_df[mask_signif].sort_values(by='$bi_{OR}$', ascending=False))
 
 def split_model_results(X, y, w, b, threshold):
     X_np = X.to_numpy()
@@ -286,7 +292,7 @@ def make_total_row(df, vars):
         if c != vars: total_row[c] = df[c].sum()
     return pd.DataFrame([total_row])
 
-def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True, with_total=True):
+def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True, with_total=True, as_markdown=True):
     df_tn, df_fp, df_fn, df_tp = get_df_conf_matrix_split(feature_tracker, model)
 
     if TP_FN: 
@@ -307,7 +313,8 @@ def get_df_conf_matrix_count_by_var(var, feature_tracker, model=None, TP_FN=True
         total_row = make_total_row(tab, var)
         tab = pd.concat([tab, total_row], ignore_index=True)
     #print(tab.to_markdown(index=False))
-    return tab
+    if as_markdown: return Markdown(tab.to_markdown(index=False))
+    else: return tab
 
 def get_df_conf_matrix_contrib(feature_tracker, model=None):
     X = feature_tracker.flush_to_df(removeTargets=True)
@@ -341,7 +348,7 @@ def get_df_conf_matrix_contrib_analysis(var_filter, var_filter_value, var_name, 
             ]})
     return tab
 
-def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True):
+def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True, as_markdown=True):
     rows = []
 
     def _to_str(x):
@@ -355,7 +362,7 @@ def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True):
         return str(x)
 
     for v in vars:
-        tab = get_df_conf_matrix_count_by_var(v, feature_tracker, with_total=True)
+        tab = get_df_conf_matrix_count_by_var(v, feature_tracker, with_total=True, as_markdown=False)
 
         # | value | TP count | FN count |
         value_col = tab.columns[0]
@@ -389,7 +396,8 @@ def get_df_dom(vars, feature_tracker, thresh=0.20, TP_FN=True):
             "FN (count)": fn_cnts,
         })
 
-    return pd.DataFrame(rows)
+    if as_markdown: return Markdown(pd.DataFrame(rows).to_markdown())
+    else: return pd.DataFrame(rows)
 
 def compute_LD1(df_new, cols, lda, scaler, dummy_cols):
     X = pd.get_dummies(df_new[cols].astype("category"), drop_first=False)
@@ -417,12 +425,13 @@ def print_df_analysis_html(df):
     return html
     #print(html)
 
-def get_target_count_of_variables(X, y, vars, markdown=True):
+def get_target_count_of_variables(X, y, vars, as_markdown=True):
     dfs = {
-        f"{v} (CARAVAN=1)": X.loc[y == 1, v].value_counts()
+        v: X.loc[y == 1, v].value_counts()
         for v in vars
     }
     df = pd.concat(dfs, axis=1).fillna(0).astype(int)
+    df = data.replace_by_name_desc(df)
 
-    if markdown: return df.sort_index().to_markdown()
+    if as_markdown: return Markdown(df.sort_index().to_markdown())
     return df

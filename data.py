@@ -48,7 +48,7 @@ class DataInfo:
         
         if vars is None: return desc_dict
 
-        return {v: desc_dict[v] for v in vars if v in desc_dict}
+        return {k: v for k, v in desc_dict.items() if k in vars}
     
     def _format_desc(self, desc):
         if desc is None: return None
@@ -91,6 +91,11 @@ def replace_values_by_name_desc(obj, vars=None):
         return obj.map(_map_desc)
     
     raise TypeError("obj doit etre Series ou DataFrame")
+
+def get_vars_cols_translated(vars=None):
+    df = DataInfo.get_instance().df.copy()
+    if vars is not None: df = df[vars]
+    return replace_by_name_desc(df).columns
 
 
 def read_dictionnary(df):
